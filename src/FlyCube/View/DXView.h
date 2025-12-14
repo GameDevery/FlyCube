@@ -1,21 +1,14 @@
 #pragma once
 #include "CPUDescriptorPool/DXCPUDescriptorHandle.h"
 #include "Resource/DXResource.h"
-#include "View/View.h"
+#include "View/ViewBase.h"
 
 class DXDevice;
 class DXResource;
-class DXBindlessTypedViewPool;
 
-class DXView : public View {
+class DXView : public ViewBase {
 public:
     DXView(DXDevice& device, const std::shared_ptr<DXResource>& resource, const ViewDesc& view_desc);
-    std::shared_ptr<Resource> GetResource() override;
-    uint32_t GetDescriptorId() const override;
-    uint32_t GetBaseMipLevel() const override;
-    uint32_t GetLevelCount() const override;
-    uint32_t GetBaseArrayLayer() const override;
-    uint32_t GetLayerCount() const override;
 
     D3D12_CPU_DESCRIPTOR_HANDLE GetHandle();
 
@@ -30,8 +23,6 @@ private:
     void CreateSampler();
 
     DXDevice& device_;
-    std::shared_ptr<DXResource> resource_;
-    ViewDesc view_desc_;
+    DXResource* dx_resource_;
     std::shared_ptr<DXCPUDescriptorHandle> handle_;
-    std::shared_ptr<DXBindlessTypedViewPool> bindless_view_pool_;
 };

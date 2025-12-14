@@ -1,7 +1,6 @@
 #include "View/VKView.h"
 
 #include "BindingSetLayout/VKBindingSetLayout.h"
-#include "BindlessTypedViewPool/VKBindlessTypedViewPool.h"
 #include "Device/VKDevice.h"
 #include "Resource/VKResource.h"
 #include "Utilities/NotReached.h"
@@ -35,17 +34,16 @@ vk::ImageViewType GetImageViewType(ViewDimension dimension)
 } // namespace
 
 VKView::VKView(VKDevice& device, const std::shared_ptr<VKResource>& resource, const ViewDesc& view_desc)
-    : device_(device)
-    , resource_(resource)
-    , view_desc_(view_desc)
+    : ViewBase(resource, view_desc)
+    , device_(device)
+    , vk_resource_(resource.get())
 {
     if (resource) {
         CreateView();
     }
 
-    if (view_desc_.bindless) {
-        bindless_view_pool_ = std::make_shared<VKBindlessTypedViewPool>(device_, view_desc_.view_type, 1);
-        bindless_view_pool_->WriteViewImpl(0, this);
+    if (view_desc.bindless) {
+        CreateBindlessTypedViewPool(device_);
     }
 }
 
@@ -53,7 +51,7 @@ void VKView::CreateView()
 {
     switch (view_desc_.view_type) {
     case ViewType::kSampler:
-        descriptor_image_.sampler = resource_->GetSampler();
+        descriptor_image_.sampler = vk_resource_->GetSampler();
         descriptor_.pImageInfo = &descriptor_image_;
         break;
     case ViewType::kTexture: {
@@ -71,7 +69,7 @@ void VKView::CreateView()
         break;
     }
     case ViewType::kAccelerationStructure: {
-        acceleration_structure_ = resource_->GetAccelerationStructure();
+        acceleration_structure_ = vk_resource_->GetAccelerationStructure();
         descriptor_acceleration_structure_.accelerationStructureCount = 1;
         descriptor_acceleration_structure_.pAccelerationStructures = &acceleration_structure_;
         descriptor_.pNext = &descriptor_acceleration_structure_;
@@ -88,8 +86,8 @@ void VKView::CreateView()
     case ViewType::kRWStructuredBuffer:
     case ViewType::kByteAddressBuffer:
     case ViewType::kRWByteAddressBuffer: {
-        uint64_t size = std::min(resource_->GetWidth() - view_desc_.offset, view_desc_.buffer_size);
-        descriptor_buffer_.buffer = resource_->GetBuffer();
+        uint64_t size = std::min(vk_resource_->GetWidth() - view_desc_.offset, view_desc_.buffer_size);
+        descriptor_buffer_.buffer = vk_resource_->GetBuffer();
         descriptor_buffer_.offset = view_desc_.offset;
         descriptor_buffer_.range = size;
         descriptor_.pBufferInfo = &descriptor_buffer_;
@@ -108,8 +106,8 @@ void VKView::CreateView()
 void VKView::CreateImageView()
 {
     vk::ImageViewCreateInfo image_view_desc = {};
-    image_view_desc.image = resource_->GetImage();
-    image_view_desc.format = static_cast<vk::Format>(resource_->GetFormat());
+    image_view_desc.image = vk_resource_->GetImage();
+    image_view_desc.format = static_cast<vk::Format>(vk_resource_->GetFormat());
     image_view_desc.viewType = GetImageViewType(view_desc_.dimension);
     image_view_desc.subresourceRange.baseMipLevel = GetBaseMipLevel();
     image_view_desc.subresourceRange.levelCount = GetLevelCount();
@@ -132,46 +130,13 @@ void VKView::CreateImageView()
 
 void VKView::CreateBufferView()
 {
-    uint64_t size = std::min(resource_->GetWidth() - view_desc_.offset, view_desc_.buffer_size);
+    uint64_t size = std::min(vk_resource_->GetWidth() - view_desc_.offset, view_desc_.buffer_size);
     vk::BufferViewCreateInfo buffer_view_desc = {};
-    buffer_view_desc.buffer = resource_->GetBuffer();
+    buffer_view_desc.buffer = vk_resource_->GetBuffer();
     buffer_view_desc.format = static_cast<vk::Format>(view_desc_.buffer_format);
     buffer_view_desc.offset = view_desc_.offset;
     buffer_view_desc.range = size;
     buffer_view_ = device_.GetDevice().createBufferViewUnique(buffer_view_desc);
-}
-
-std::shared_ptr<Resource> VKView::GetResource()
-{
-    return resource_;
-}
-
-uint32_t VKView::GetDescriptorId() const
-{
-    if (bindless_view_pool_) {
-        return bindless_view_pool_->GetBaseDescriptorId();
-    }
-    NOTREACHED();
-}
-
-uint32_t VKView::GetBaseMipLevel() const
-{
-    return view_desc_.base_mip_level;
-}
-
-uint32_t VKView::GetLevelCount() const
-{
-    return std::min<uint32_t>(view_desc_.level_count, resource_->GetLevelCount() - view_desc_.base_mip_level);
-}
-
-uint32_t VKView::GetBaseArrayLayer() const
-{
-    return view_desc_.base_array_layer;
-}
-
-uint32_t VKView::GetLayerCount() const
-{
-    return std::min<uint32_t>(view_desc_.layer_count, resource_->GetLayerCount() - view_desc_.base_array_layer);
 }
 
 vk::ImageView VKView::GetImageView() const

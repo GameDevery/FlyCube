@@ -27,13 +27,14 @@ uint32_t VKBindlessTypedViewPool::GetViewCount() const
 
 void VKBindlessTypedViewPool::WriteView(uint32_t index, const std::shared_ptr<View>& view)
 {
-    WriteViewImpl(index, CastToImpl<VKView>(view));
+    WriteViewImpl(index, view.get());
 }
 
-void VKBindlessTypedViewPool::WriteViewImpl(uint32_t index, VKView* view)
+void VKBindlessTypedViewPool::WriteViewImpl(uint32_t index, View* view)
 {
     DCHECK(index < view_count_);
-    vk::WriteDescriptorSet descriptor = view->GetDescriptor();
+    auto* vk_view = CastToImpl<VKView>(view);
+    vk::WriteDescriptorSet descriptor = vk_view->GetDescriptor();
     descriptor.dstSet = range_->GetDescriptorSet();
     descriptor.dstBinding = 0;
     descriptor.dstArrayElement = range_->GetOffset() + index;

@@ -1,5 +1,5 @@
 #pragma once
-#include "BindlessTypedViewPool/BindlessTypedViewPool.h"
+#include "BindlessTypedViewPool/BindlessTypedViewPoolBase.h"
 #include "Instance/BaseTypes.h"
 
 #include <vulkan/vulkan.hpp>
@@ -9,15 +9,17 @@ class VKDevice;
 class VKGPUDescriptorPoolRange;
 class VKView;
 
-class VKBindlessTypedViewPool : public BindlessTypedViewPool {
+class VKBindlessTypedViewPool : public BindlessTypedViewPoolBase {
 public:
     VKBindlessTypedViewPool(VKDevice& device, ViewType view_type, uint32_t view_count);
 
+    // BindlessTypedViewPool:
     uint32_t GetBaseDescriptorId() const override;
     uint32_t GetViewCount() const override;
     void WriteView(uint32_t index, const std::shared_ptr<View>& view) override;
 
-    void WriteViewImpl(uint32_t index, VKView* view);
+    // BindlessTypedViewPoolBase:
+    void WriteViewImpl(uint32_t index, View* view) override;
 
 private:
     VKDevice& device_;

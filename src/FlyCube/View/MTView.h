@@ -1,20 +1,13 @@
 #pragma once
 #include "Resource/MTResource.h"
-#include "View/View.h"
+#include "View/ViewBase.h"
 
-class MTBindlessTypedViewPool;
 class MTDevice;
 class MTResource;
 
-class MTView : public View {
+class MTView : public ViewBase {
 public:
     MTView(MTDevice& device, const std::shared_ptr<MTResource>& resource, const ViewDesc& view_desc);
-    std::shared_ptr<Resource> GetResource() override;
-    uint32_t GetDescriptorId() const override;
-    uint32_t GetBaseMipLevel() const override;
-    uint32_t GetLevelCount() const override;
-    uint32_t GetBaseArrayLayer() const override;
-    uint32_t GetLayerCount() const override;
 
     const ViewDesc& GetViewDesc() const;
     id<MTLResource> GetNativeResource() const;
@@ -28,8 +21,6 @@ private:
     void CreateTextureView();
 
     MTDevice& device_;
-    std::shared_ptr<MTResource> resource_;
-    ViewDesc view_desc_;
+    MTResource* mt_resource_;
     id<MTLTexture> texture_view_ = nullptr;
-    std::shared_ptr<MTBindlessTypedViewPool> bindless_view_pool_;
 };

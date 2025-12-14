@@ -46,11 +46,12 @@ uint32_t DXBindlessTypedViewPool::GetViewCount() const
 
 void DXBindlessTypedViewPool::WriteView(uint32_t index, const std::shared_ptr<View>& view)
 {
-    WriteViewImpl(index, CastToImpl<DXView>(view));
+    WriteViewImpl(index, view.get());
 }
 
-void DXBindlessTypedViewPool::WriteViewImpl(uint32_t index, DXView* view)
+void DXBindlessTypedViewPool::WriteViewImpl(uint32_t index, View* view)
 {
     DCHECK(index < view_count_);
-    range_->CopyCpuHandle(index, view->GetHandle());
+    auto* dx_view = CastToImpl<DXView>(view);
+    range_->CopyCpuHandle(index, dx_view->GetHandle());
 }

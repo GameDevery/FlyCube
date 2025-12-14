@@ -1,6 +1,5 @@
 #include "View/DXView.h"
 
-#include "BindlessTypedViewPool/DXBindlessTypedViewPool.h"
 #include "Device/DXDevice.h"
 #include "Utilities/Check.h"
 #include "Utilities/Common.h"
@@ -12,10 +11,10 @@
 
 #include <cassert>
 
-DXView::DXView(DXDevice& device, const std::shared_ptr<DXResource>& resource, const ViewDesc& view_desc_)
-    : device_(device)
-    , resource_(resource)
-    , view_desc_(view_desc_)
+DXView::DXView(DXDevice& device, const std::shared_ptr<DXResource>& resource, const ViewDesc& view_desc)
+    : ViewBase(resource, view_desc)
+    , device_(device)
+    , dx_resource_(resource.get())
 {
     if (view_desc_.view_type == ViewType::kShadingRateSource) {
         return;
@@ -23,13 +22,12 @@ DXView::DXView(DXDevice& device, const std::shared_ptr<DXResource>& resource, co
 
     handle_ = device_.GetCPUDescriptorPool().AllocateDescriptor(view_desc_.view_type);
 
-    if (resource_) {
+    if (dx_resource_) {
         CreateView();
     }
 
-    if (view_desc_.bindless) {
-        bindless_view_pool_ = std::make_shared<DXBindlessTypedViewPool>(device_, view_desc_.view_type, 1);
-        bindless_view_pool_->WriteViewImpl(0, this);
+    if (view_desc.bindless) {
+        CreateBindlessTypedViewPool(device_);
     }
 }
 
@@ -77,7 +75,7 @@ void DXView::CreateSRV()
 {
     D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
     srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srv_desc.Format = resource_->GetResourceDesc().Format;
+    srv_desc.Format = dx_resource_->GetResourceDesc().Format;
 
     if (IsTypelessDepthStencil(srv_desc.Format)) {
         if (view_desc_.plane_slice == 0) {
@@ -161,7 +159,7 @@ void DXView::CreateSRV()
             srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
             stride = 4;
         }
-        uint64_t size = std::min(resource_->GetResourceDesc().Width - view_desc_.offset, view_desc_.buffer_size);
+        uint64_t size = std::min(dx_resource_->GetResourceDesc().Width - view_desc_.offset, view_desc_.buffer_size);
         DCHECK(view_desc_.offset % stride == 0);
         srv_desc.Buffer.FirstElement = view_desc_.offset / stride;
         srv_desc.Buffer.NumElements = size / stride;
@@ -172,7 +170,7 @@ void DXView::CreateSRV()
     }
     }
 
-    device_.GetDevice()->CreateShaderResourceView(resource_->GetResource(), &srv_desc, handle_->GetCpuHandle());
+    device_.GetDevice()->CreateShaderResourceView(dx_resource_->GetResource(), &srv_desc, handle_->GetCpuHandle());
 }
 
 void DXView::CreateRAS()
@@ -180,14 +178,14 @@ void DXView::CreateRAS()
     D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
     srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     srv_desc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
-    srv_desc.RaytracingAccelerationStructure.Location = resource_->GetAccelerationStructureAddress();
+    srv_desc.RaytracingAccelerationStructure.Location = dx_resource_->GetAccelerationStructureAddress();
     device_.GetDevice()->CreateShaderResourceView(nullptr, &srv_desc, handle_->GetCpuHandle());
 }
 
 void DXView::CreateUAV()
 {
     D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
-    uav_desc.Format = resource_->GetResourceDesc().Format;
+    uav_desc.Format = dx_resource_->GetResourceDesc().Format;
 
     switch (view_desc_.dimension) {
     case ViewDimension::kTexture1D: {
@@ -236,7 +234,7 @@ void DXView::CreateUAV()
             uav_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
             stride = 4;
         }
-        uint64_t size = std::min(resource_->GetResourceDesc().Width - view_desc_.offset, view_desc_.buffer_size);
+        uint64_t size = std::min(dx_resource_->GetResourceDesc().Width - view_desc_.offset, view_desc_.buffer_size);
         DCHECK(view_desc_.offset % stride == 0);
         uav_desc.Buffer.FirstElement = view_desc_.offset / stride;
         uav_desc.Buffer.NumElements = size / stride;
@@ -247,14 +245,14 @@ void DXView::CreateUAV()
     }
     }
 
-    device_.GetDevice()->CreateUnorderedAccessView(resource_->GetResource(), nullptr, &uav_desc,
+    device_.GetDevice()->CreateUnorderedAccessView(dx_resource_->GetResource(), nullptr, &uav_desc,
                                                    handle_->GetCpuHandle());
 }
 
 void DXView::CreateRTV()
 {
     D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
-    rtv_desc.Format = resource_->GetResourceDesc().Format;
+    rtv_desc.Format = dx_resource_->GetResourceDesc().Format;
 
     switch (view_desc_.dimension) {
     case ViewDimension::kTexture1D: {
@@ -303,13 +301,13 @@ void DXView::CreateRTV()
     }
     }
 
-    device_.GetDevice()->CreateRenderTargetView(resource_->GetResource(), &rtv_desc, handle_->GetCpuHandle());
+    device_.GetDevice()->CreateRenderTargetView(dx_resource_->GetResource(), &rtv_desc, handle_->GetCpuHandle());
 }
 
 void DXView::CreateDSV()
 {
     D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc = {};
-    dsv_desc.Format = DepthStencilFromTypeless(resource_->GetResourceDesc().Format);
+    dsv_desc.Format = DepthStencilFromTypeless(dx_resource_->GetResourceDesc().Format);
 
     switch (view_desc_.dimension) {
     case ViewDimension::kTexture1D: {
@@ -351,55 +349,22 @@ void DXView::CreateDSV()
     }
     }
 
-    device_.GetDevice()->CreateDepthStencilView(resource_->GetResource(), &dsv_desc, handle_->GetCpuHandle());
+    device_.GetDevice()->CreateDepthStencilView(dx_resource_->GetResource(), &dsv_desc, handle_->GetCpuHandle());
 }
 
 void DXView::CreateCBV()
 {
-    CHECK(view_desc_.offset < resource_->GetResourceDesc().Width);
+    CHECK(view_desc_.offset < dx_resource_->GetResourceDesc().Width);
     CHECK(view_desc_.offset % device_.GetConstantBufferOffsetAlignment() == 0);
     D3D12_CONSTANT_BUFFER_VIEW_DESC cvb_desc = {};
-    cvb_desc.BufferLocation = resource_->GetResource()->GetGPUVirtualAddress() + view_desc_.offset;
-    cvb_desc.SizeInBytes = std::min(resource_->GetResourceDesc().Width - view_desc_.offset, view_desc_.buffer_size);
+    cvb_desc.BufferLocation = dx_resource_->GetResource()->GetGPUVirtualAddress() + view_desc_.offset;
+    cvb_desc.SizeInBytes = std::min(dx_resource_->GetResourceDesc().Width - view_desc_.offset, view_desc_.buffer_size);
     cvb_desc.SizeInBytes = Align(cvb_desc.SizeInBytes, device_.GetConstantBufferOffsetAlignment());
-    DCHECK(view_desc_.offset + cvb_desc.SizeInBytes <= resource_->GetResourceDesc().Width);
+    DCHECK(view_desc_.offset + cvb_desc.SizeInBytes <= dx_resource_->GetResourceDesc().Width);
     device_.GetDevice()->CreateConstantBufferView(&cvb_desc, handle_->GetCpuHandle());
 }
 
 void DXView::CreateSampler()
 {
-    device_.GetDevice()->CreateSampler(&resource_->GetSamplerDesc(), handle_->GetCpuHandle());
-}
-
-std::shared_ptr<Resource> DXView::GetResource()
-{
-    return resource_;
-}
-
-uint32_t DXView::GetDescriptorId() const
-{
-    if (bindless_view_pool_) {
-        return bindless_view_pool_->GetBaseDescriptorId();
-    }
-    NOTREACHED();
-}
-
-uint32_t DXView::GetBaseMipLevel() const
-{
-    return view_desc_.base_mip_level;
-}
-
-uint32_t DXView::GetLevelCount() const
-{
-    return std::min<uint32_t>(view_desc_.level_count, resource_->GetLevelCount() - view_desc_.base_mip_level);
-}
-
-uint32_t DXView::GetBaseArrayLayer() const
-{
-    return view_desc_.base_array_layer;
-}
-
-uint32_t DXView::GetLayerCount() const
-{
-    return std::min<uint32_t>(view_desc_.layer_count, resource_->GetLayerCount() - view_desc_.base_array_layer);
+    device_.GetDevice()->CreateSampler(&dx_resource_->GetSamplerDesc(), handle_->GetCpuHandle());
 }

@@ -282,6 +282,8 @@ list(APPEND View
     $<$<BOOL:${VULKAN_SUPPORT}>:View/VKView.cpp>
     $<$<BOOL:${VULKAN_SUPPORT}>:View/VKView.h>
     View/View.h
+    View/ViewBase.cpp
+    View/ViewBase.h
 )
 
 add_library(FlyCube

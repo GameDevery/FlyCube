@@ -1,20 +1,22 @@
 #pragma once
-#include "BindlessTypedViewPool/BindlessTypedViewPool.h"
+#include "BindlessTypedViewPool/BindlessTypedViewPoolBase.h"
 #include "Instance/BaseTypes.h"
 
 class MTDevice;
 class MTGPUArgumentBufferRange;
 class MTView;
 
-class MTBindlessTypedViewPool : public BindlessTypedViewPool {
+class MTBindlessTypedViewPool : public BindlessTypedViewPoolBase {
 public:
     MTBindlessTypedViewPool(MTDevice& device, ViewType view_type, uint32_t view_count);
 
+    // BindlessTypedViewPool:
     uint32_t GetBaseDescriptorId() const override;
     uint32_t GetViewCount() const override;
     void WriteView(uint32_t index, const std::shared_ptr<View>& view) override;
 
-    void WriteViewImpl(uint32_t index, MTView* view);
+    // BindlessTypedViewPoolBase:
+    void WriteViewImpl(uint32_t index, View* view) override;
 
 private:
     uint32_t view_count_;
