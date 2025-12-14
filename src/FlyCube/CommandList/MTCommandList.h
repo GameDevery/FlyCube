@@ -4,6 +4,7 @@
 #import <Metal/Metal.h>
 
 #include <map>
+#include <memory>
 #include <optional>
 
 class MTDevice;
@@ -120,29 +121,36 @@ private:
     void CloseComputeEncoder();
 
     MTDevice& device_;
-    id<MTL4CommandBuffer> command_buffer_ = nullptr;
     id<MTL4CommandAllocator> allocator_ = nullptr;
-    id<MTL4RenderCommandEncoder> render_encoder_ = nullptr;
-    id<MTL4ComputeCommandEncoder> compute_encoder_ = nullptr;
-    id<MTLBuffer> index_buffer_ = nullptr;
-    uint64_t index_buffer_offset_ = 0;
-    gli::format index_format_ = gli::FORMAT_UNDEFINED;
-    MTLViewport viewport_ = {};
-    MTLScissorRect scissor_ = {};
-    float min_depth_bounds_ = 0.0;
-    float max_depth_bounds_ = 1.0;
-    uint32_t stencil_reference_ = 0;
-    std::optional<std::array<float, 4>> blend_constants_;
-    std::shared_ptr<Pipeline> pipeline_;
-    std::shared_ptr<MTBindingSet> binding_set_;
-    std::map<ShaderType, id<MTL4ArgumentTable>> argument_tables_;
-    id<MTLResidencySet> residency_set_ = nullptr;
-    std::vector<id<MTLBuffer>> patch_buffers_;
-    bool need_apply_pipeline_ = false;
-    bool need_apply_binding_set_ = false;
-    MTLStages render_barrier_after_stages_ = 0;
-    MTLStages render_barrier_before_stages_ = 0;
-    MTLStages compute_barrier_after_stages_ = 0;
-    MTLStages compute_barrier_before_stages_ = 0;
-    bool closed_ = false;
+    id<MTL4CommandBuffer> command_buffer_ = nullptr;
+
+    static constexpr MTLStages kRenderStages = MTLStageVertex | MTLStageObject | MTLStageMesh | MTLStageFragment;
+    static constexpr MTLStages kComputeStages = MTLStageDispatch | MTLStageBlit | MTLStageAccelerationStructure;
+
+    struct State {
+        id<MTL4RenderCommandEncoder> render_encoder = nullptr;
+        id<MTL4ComputeCommandEncoder> compute_encoder = nullptr;
+        id<MTLBuffer> index_buffer = nullptr;
+        uint64_t index_buffer_offset = 0;
+        gli::format index_format = gli::FORMAT_UNDEFINED;
+        MTLViewport viewport = {};
+        MTLScissorRect scissor = {};
+        float min_depth_bounds = 0.0;
+        float max_depth_bounds = 1.0;
+        uint32_t stencil_reference = 0;
+        std::optional<std::array<float, 4>> blend_constants;
+        std::shared_ptr<Pipeline> pipeline;
+        std::shared_ptr<MTBindingSet> binding_set;
+        std::map<ShaderType, id<MTL4ArgumentTable>> argument_tables;
+        id<MTLResidencySet> residency_set = nullptr;
+        std::vector<id<MTLBuffer>> patch_buffers;
+        bool need_apply_pipeline = false;
+        bool need_apply_binding_set = false;
+        MTLStages render_barrier_after_stages = MTLStageAll;
+        MTLStages render_barrier_before_stages = kRenderStages;
+        MTLStages compute_barrier_after_stages = MTLStageAll;
+        MTLStages compute_barrier_before_stages = kComputeStages;
+    };
+
+    std::unique_ptr<State> state_;
 };
