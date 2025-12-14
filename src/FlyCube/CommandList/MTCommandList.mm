@@ -155,7 +155,9 @@ void MTCommandList::Reset()
     } else {
         [allocator_ reset];
     }
-    command_buffer_ = [device_.GetDevice() newCommandBuffer];
+    if (!command_buffer_) {
+        command_buffer_ = [device_.GetDevice() newCommandBuffer];
+    }
     [command_buffer_ beginCommandBufferWithAllocator:allocator_];
 
     state_ = std::make_unique<State>();
