@@ -80,8 +80,7 @@ VKCommandList::VKCommandList(VKDevice& device, CommandListType type)
     cmd_buf_alloc_info.level = vk::CommandBufferLevel::ePrimary;
     std::vector<vk::UniqueCommandBuffer> cmd_bufs = device.GetDevice().allocateCommandBuffersUnique(cmd_buf_alloc_info);
     command_list_ = std::move(cmd_bufs.front());
-    vk::CommandBufferBeginInfo begin_info = {};
-    command_list_->begin(begin_info);
+    Reset();
 }
 
 void VKCommandList::Reset()
@@ -89,17 +88,17 @@ void VKCommandList::Reset()
     Close();
     vk::CommandBufferBeginInfo begin_info = {};
     command_list_->begin(begin_info);
-    closed_ = false;
-    pipeline_.reset();
-    binding_set_.reset();
+    state_ = std::make_unique<State>();
 }
 
 void VKCommandList::Close()
 {
-    if (!closed_) {
-        command_list_->end();
-        closed_ = true;
+    if (!state_) {
+        return;
     }
+
+    command_list_->end();
+    state_.reset();
 }
 
 vk::PipelineBindPoint GetPipelineBindPoint(PipelineType type)
@@ -118,27 +117,28 @@ vk::PipelineBindPoint GetPipelineBindPoint(PipelineType type)
 
 void VKCommandList::BindPipeline(const std::shared_ptr<Pipeline>& pipeline)
 {
-    if (pipeline == pipeline_) {
+    if (pipeline == state_->pipeline) {
         return;
     }
-    pipeline_ = std::static_pointer_cast<VKPipeline>(pipeline);
-    command_list_->bindPipeline(GetPipelineBindPoint(pipeline_->GetPipelineType()), pipeline_->GetPipeline());
+    state_->pipeline = std::static_pointer_cast<VKPipeline>(pipeline);
+    command_list_->bindPipeline(GetPipelineBindPoint(state_->pipeline->GetPipelineType()),
+                                state_->pipeline->GetPipeline());
 }
 
 void VKCommandList::BindBindingSet(const std::shared_ptr<BindingSet>& binding_set)
 {
-    if (binding_set == binding_set_) {
+    if (binding_set == state_->binding_set) {
         return;
     }
-    binding_set_ = binding_set;
+    state_->binding_set = binding_set;
     decltype(auto) vk_binding_set = binding_set->As<VKBindingSet>();
     decltype(auto) descriptor_sets = vk_binding_set.GetDescriptorSets();
     if (descriptor_sets.empty()) {
         return;
     }
-    command_list_->bindDescriptorSets(GetPipelineBindPoint(pipeline_->GetPipelineType()),
-                                      pipeline_->GetPipelineLayout(), 0, descriptor_sets.size(), descriptor_sets.data(),
-                                      0, nullptr);
+    command_list_->bindDescriptorSets(GetPipelineBindPoint(state_->pipeline->GetPipelineType()),
+                                      state_->pipeline->GetPipelineLayout(), 0, descriptor_sets.size(),
+                                      descriptor_sets.data(), 0, nullptr);
 }
 
 void VKCommandList::BeginRenderPass(const RenderPassDesc& render_pass_desc)

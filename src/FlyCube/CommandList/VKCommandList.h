@@ -113,7 +113,11 @@ private:
 
     VKDevice& device_;
     vk::UniqueCommandBuffer command_list_;
-    bool closed_ = false;
-    std::shared_ptr<VKPipeline> pipeline_;
-    std::shared_ptr<BindingSet> binding_set_;
+
+    struct State {
+        std::shared_ptr<VKPipeline> pipeline;
+        std::shared_ptr<BindingSet> binding_set;
+    };
+
+    std::unique_ptr<State> state_;
 };
