@@ -80,6 +80,7 @@ DXCommandList::DXCommandList(DXDevice& device, CommandListType type)
     CHECK_HRESULT(device.GetDevice()->CreateCommandList(0, dx_type, command_allocator_.Get(), nullptr,
                                                         IID_PPV_ARGS(&command_list_)));
 
+    command_list_.As(&command_list1_);
     command_list_.As(&command_list4_);
     command_list_.As(&command_list5_);
     command_list_.As(&command_list6_);
@@ -395,7 +396,7 @@ void DXCommandList::UAVResourceBarrier(const std::shared_ptr<Resource>& resource
         decltype(auto) dx_resource = resource->As<DXResource>();
         uav_barrier.UAV.pResource = dx_resource.GetResource();
     }
-    command_list4_->ResourceBarrier(1, &uav_barrier);
+    command_list_->ResourceBarrier(1, &uav_barrier);
 }
 
 void DXCommandList::SetViewport(float x, float y, float width, float height, float min_depth, float max_depth)
@@ -474,7 +475,7 @@ void DXCommandList::RSSetShadingRate(ShadingRate shading_rate, const std::array<
 
 void DXCommandList::SetDepthBounds(float min_depth_bounds, float max_depth_bounds)
 {
-    command_list4_->OMSetDepthBounds(min_depth_bounds, max_depth_bounds);
+    command_list1_->OMSetDepthBounds(min_depth_bounds, max_depth_bounds);
 }
 
 void DXCommandList::SetStencilReference(uint32_t stencil_reference)

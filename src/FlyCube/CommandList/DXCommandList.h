@@ -133,6 +133,7 @@ private:
     DXDevice& device_;
     ComPtr<ID3D12CommandAllocator> command_allocator_;
     ComPtr<ID3D12GraphicsCommandList> command_list_;
+    ComPtr<ID3D12GraphicsCommandList1> command_list1_;
     ComPtr<ID3D12GraphicsCommandList4> command_list4_;
     ComPtr<ID3D12GraphicsCommandList5> command_list5_;
     ComPtr<ID3D12GraphicsCommandList6> command_list6_;
