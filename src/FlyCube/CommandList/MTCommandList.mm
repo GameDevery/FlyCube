@@ -160,6 +160,7 @@ void MTCommandList::Reset()
     }
     [command_buffer_ beginCommandBufferWithAllocator:allocator_];
 
+    patch_buffers_ = {};
     state_ = std::make_unique<State>();
     CreateArgumentTables();
     state_->residency_set = device_.CreateResidencySet();
