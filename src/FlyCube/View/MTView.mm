@@ -42,39 +42,32 @@ MTView::MTView(MTDevice& device, const std::shared_ptr<MTResource>& resource, co
     , device_(device)
     , mt_resource_(resource.get())
 {
-    if (!mt_resource_) {
-        return;
+    if (mt_resource_) {
+        CreateView();
     }
 
+    if (view_desc.bindless) {
+        CreateBindlessTypedViewPool(device_);
+    }
+}
+
+void MTView::CreateView()
+{
     switch (view_desc_.view_type) {
     case ViewType::kTexture:
     case ViewType::kRWTexture:
         CreateTextureView();
         break;
+    case ViewType::kBuffer:
+    case ViewType::kRWBuffer:
+        CreateTextureBufferView();
+        break;
+    case ViewType::kRenderTarget:
+    case ViewType::kDepthStencil:
+        texture_view_ = mt_resource_->GetTexture();
+        break;
     default:
         break;
-    }
-
-    if (view_desc_.view_type == ViewType::kBuffer || view_desc_.view_type == ViewType::kRWBuffer) {
-        id<MTLBuffer> buffer = mt_resource_->GetBuffer();
-        MTLPixelFormat format = device_.GetMTLPixelFormat(view_desc_.buffer_format);
-        uint32_t bits_per_pixel = gli::detail::bits_per_pixel(view_desc_.buffer_format) / 8;
-        uint64_t size = std::min(mt_resource_->GetWidth() - view_desc_.offset, view_desc_.buffer_size);
-        uint64_t width = size / bits_per_pixel;
-        MTLResourceOptions options = ConvertStorageMode(mt_resource_->GetMemoryType()) << MTLResourceStorageModeShift;
-        MTLTextureDescriptor* texture_descriptor =
-            [MTLTextureDescriptor textureBufferDescriptorWithPixelFormat:format
-                                                                   width:width
-                                                         resourceOptions:options
-                                                                   usage:MTLTextureUsageShaderRead];
-        uint32_t alignment = [device_.GetDevice() minimumTextureBufferAlignmentForPixelFormat:format];
-        texture_view_ = [buffer newTextureWithDescriptor:texture_descriptor
-                                                  offset:view_desc_.offset
-                                             bytesPerRow:Align(bits_per_pixel * width, alignment)];
-    }
-
-    if (view_desc.bindless) {
-        CreateBindlessTypedViewPool(device_);
     }
 }
 
@@ -111,15 +104,37 @@ void MTView::CreateTextureView()
     }
 }
 
-const ViewDesc& MTView::GetViewDesc() const
+void MTView::CreateTextureBufferView()
 {
-    return view_desc_;
+    id<MTLBuffer> buffer = mt_resource_->GetBuffer();
+    MTLPixelFormat format = device_.GetMTLPixelFormat(view_desc_.buffer_format);
+    uint32_t bits_per_pixel = gli::detail::bits_per_pixel(view_desc_.buffer_format) / 8;
+    uint64_t size = std::min(mt_resource_->GetWidth() - view_desc_.offset, view_desc_.buffer_size);
+    uint64_t width = size / bits_per_pixel;
+    MTLResourceOptions options = ConvertStorageMode(mt_resource_->GetMemoryType()) << MTLResourceStorageModeShift;
+    MTLTextureDescriptor* texture_descriptor =
+        [MTLTextureDescriptor textureBufferDescriptorWithPixelFormat:format
+                                                               width:width
+                                                     resourceOptions:options
+                                                               usage:MTLTextureUsageShaderRead];
+    uint32_t alignment = [device_.GetDevice() minimumTextureBufferAlignmentForPixelFormat:format];
+    texture_view_ = [buffer newTextureWithDescriptor:texture_descriptor
+                                              offset:view_desc_.offset
+                                         bytesPerRow:Align(bits_per_pixel * width, alignment)];
+    if (!texture_view_) {
+        Logging::Println("Failed to create MTLTexture using newTextureWithDescriptor from buffer");
+    }
 }
 
-id<MTLResource> MTView::GetNativeResource() const
+id<MTLTexture> MTView::GetTextureView() const
+{
+    return texture_view_;
+}
+
+id<MTLResource> MTView::GetAllocation() const
 {
     if (!mt_resource_) {
-        return {};
+        return nullptr;
     }
 
     switch (view_desc_.view_type) {
@@ -130,22 +145,20 @@ id<MTLResource> MTView::GetNativeResource() const
     case ViewType::kRWStructuredBuffer:
     case ViewType::kByteAddressBuffer:
     case ViewType::kRWByteAddressBuffer:
-        return GetBuffer();
+        return mt_resource_->GetBuffer();
     case ViewType::kSampler:
-        return {};
+        return nullptr;
     case ViewType::kTexture:
-    case ViewType::kRWTexture: {
-        return GetTexture();
-    }
-    case ViewType::kAccelerationStructure: {
-        return GetAccelerationStructure();
-    }
+    case ViewType::kRWTexture:
+        return mt_resource_->GetTexture();
+    case ViewType::kAccelerationStructure:
+        return mt_resource_->GetAccelerationStructure();
     default:
         NOTREACHED();
     }
 }
 
-uint64_t MTView::GetGpuAddress() const
+MTLGPUAddress MTView::GetGpuAddress() const
 {
     if (!mt_resource_) {
         return 0;
@@ -153,59 +166,49 @@ uint64_t MTView::GetGpuAddress() const
 
     switch (view_desc_.view_type) {
     case ViewType::kConstantBuffer:
-    case ViewType::kBuffer:
-    case ViewType::kRWBuffer:
     case ViewType::kStructuredBuffer:
     case ViewType::kRWStructuredBuffer:
     case ViewType::kByteAddressBuffer:
-    case ViewType::kRWByteAddressBuffer: {
-        return [GetBuffer() gpuAddress] + GetViewDesc().offset;
-    }
-    case ViewType::kSampler: {
-        return [GetSampler() gpuResourceID]._impl;
-    }
+    case ViewType::kRWByteAddressBuffer:
+        return mt_resource_->GetBuffer().gpuAddress + view_desc_.offset;
+    case ViewType::kSampler:
+        return mt_resource_->GetSampler().gpuResourceID._impl;
     case ViewType::kTexture:
-    case ViewType::kRWTexture: {
-        return [GetTexture() gpuResourceID]._impl;
-    }
-    case ViewType::kAccelerationStructure: {
-        return [GetAccelerationStructure() gpuResourceID]._impl;
-    }
+    case ViewType::kRWTexture:
+    case ViewType::kBuffer:
+    case ViewType::kRWBuffer:
+        return texture_view_.gpuResourceID._impl;
+    case ViewType::kAccelerationStructure:
+        return mt_resource_->GetAccelerationStructure().gpuResourceID._impl;
     default:
         NOTREACHED();
     }
 }
 
-id<MTLBuffer> MTView::GetBuffer() const
+void MTView::BindView(id<MTL4ArgumentTable> argument_table, uint32_t index)
 {
-    if (mt_resource_) {
-        return mt_resource_->GetBuffer();
+    MTLGPUAddress gpu_address = GetGpuAddress();
+    switch (view_desc_.view_type) {
+    case ViewType::kConstantBuffer:
+    case ViewType::kStructuredBuffer:
+    case ViewType::kRWStructuredBuffer:
+    case ViewType::kByteAddressBuffer:
+    case ViewType::kRWByteAddressBuffer:
+        [argument_table setAddress:gpu_address atIndex:index];
+        break;
+    case ViewType::kSampler:
+        [argument_table setSamplerState:{ gpu_address } atIndex:index];
+        break;
+    case ViewType::kTexture:
+    case ViewType::kRWTexture:
+    case ViewType::kBuffer:
+    case ViewType::kRWBuffer:
+        [argument_table setTexture:{ gpu_address } atIndex:index];
+        break;
+    case ViewType::kAccelerationStructure:
+        [argument_table setResource:{ gpu_address } atBufferIndex:index];
+        break;
+    default:
+        NOTREACHED();
     }
-    return {};
-}
-
-id<MTLSamplerState> MTView::GetSampler() const
-{
-    if (mt_resource_) {
-        return mt_resource_->GetSampler();
-    }
-    return {};
-}
-
-id<MTLTexture> MTView::GetTexture() const
-{
-    if (texture_view_) {
-        return texture_view_;
-    } else if (mt_resource_) {
-        return mt_resource_->GetTexture();
-    }
-    return {};
-}
-
-id<MTLAccelerationStructure> MTView::GetAccelerationStructure() const
-{
-    if (mt_resource_) {
-        return mt_resource_->GetAccelerationStructure();
-    }
-    return {};
 }

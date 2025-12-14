@@ -209,7 +209,7 @@ void MTCommandList::BeginRenderPass(const RenderPassDesc& render_pass_desc)
         auto* mt_view = CastToImpl<MTView>(view);
         attachment.level = mt_view->GetBaseMipLevel();
         attachment.slice = mt_view->GetBaseArrayLayer();
-        attachment.texture = mt_view->GetTexture();
+        attachment.texture = mt_view->GetTextureView();
 
         if (attachment.texture) {
             AddAllocation(attachment.texture);

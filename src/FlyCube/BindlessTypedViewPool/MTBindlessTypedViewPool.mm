@@ -34,5 +34,5 @@ void MTBindlessTypedViewPool::WriteViewImpl(uint32_t index, View* view)
     uint64_t* arguments = static_cast<uint64_t*>(range_->GetArgumentBuffer().contents);
     const uint32_t offset = range_->GetOffset() + index;
     arguments[offset] = mt_view->GetGpuAddress();
-    range_->AddAllocation(offset, mt_view->GetNativeResource());
+    range_->AddAllocation(offset, mt_view->GetAllocation());
 }

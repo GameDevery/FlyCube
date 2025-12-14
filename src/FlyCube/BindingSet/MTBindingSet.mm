@@ -5,61 +5,9 @@
 #include "Pipeline/MTPipeline.h"
 #include "Shader/MTShader.h"
 #include "Utilities/Cast.h"
+#include "Utilities/Check.h"
 #include "Utilities/NotReached.h"
 #include "View/MTView.h"
-
-namespace {
-
-void SetBuffer(id<MTL4ArgumentTable> argument_table, id<MTLBuffer> buffer, uint32_t offset, uint32_t index)
-{
-    [argument_table setAddress:buffer.gpuAddress + offset atIndex:index];
-}
-
-void SetSamplerState(id<MTL4ArgumentTable> argument_table, id<MTLSamplerState> sampler, uint32_t index)
-{
-    [argument_table setSamplerState:sampler.gpuResourceID atIndex:index];
-}
-
-void SetTexture(id<MTL4ArgumentTable> argument_table, id<MTLTexture> texture, uint32_t index)
-{
-    [argument_table setTexture:texture.gpuResourceID atIndex:index];
-}
-
-void SetAccelerationStructure(id<MTL4ArgumentTable> argument_table,
-                              id<MTLAccelerationStructure> acceleration_structure,
-                              uint32_t index)
-{
-    [argument_table setResource:acceleration_structure.gpuResourceID atBufferIndex:index];
-}
-
-void SetView(id<MTL4ArgumentTable> argument_table, const std::shared_ptr<MTView>& view, uint32_t index)
-{
-    switch (view->GetViewDesc().view_type) {
-    case ViewType::kConstantBuffer:
-    case ViewType::kStructuredBuffer:
-    case ViewType::kRWStructuredBuffer:
-    case ViewType::kByteAddressBuffer:
-    case ViewType::kRWByteAddressBuffer:
-        SetBuffer(argument_table, view->GetBuffer(), view->GetViewDesc().offset, index);
-        break;
-    case ViewType::kSampler:
-        SetSamplerState(argument_table, view->GetSampler(), index);
-        break;
-    case ViewType::kTexture:
-    case ViewType::kRWTexture:
-    case ViewType::kBuffer:
-    case ViewType::kRWBuffer:
-        SetTexture(argument_table, view->GetTexture(), index);
-        break;
-    case ViewType::kAccelerationStructure:
-        SetAccelerationStructure(argument_table, view->GetAccelerationStructure(), index);
-        break;
-    default:
-        NOTREACHED();
-    }
-}
-
-} // namespace
 
 MTBindingSet::MTBindingSet(MTDevice& device, const std::shared_ptr<MTBindingSetLayout>& layout)
     : device_(device)
@@ -95,12 +43,13 @@ void MTBindingSet::Apply(const std::map<ShaderType, id<MTL4ArgumentTable>>& argu
     for (const auto& [bind_key, view] : direct_bindings_) {
         decltype(auto) shader = CastToImpl<MTPipeline>(pipeline)->GetShader(bind_key.shader_type);
         uint32_t index = CastToImpl<MTShader>(shader)->GetIndex(bind_key);
-        SetView(argument_tables.at(bind_key.shader_type), std::static_pointer_cast<MTView>(view), index);
-        if (view) {
-            id<MTLResource> resource = CastToImpl<MTView>(view)->GetNativeResource();
-            if (resource) {
-                [residency_set addAllocation:resource];
-            }
+        auto* mt_view = CastToImpl<MTView>(view);
+        DCHECK(mt_view);
+        decltype(auto) argument_table = argument_tables.at(bind_key.shader_type);
+        mt_view->BindView(argument_table, index);
+        id<MTLResource> allocation = mt_view->GetAllocation();
+        if (allocation) {
+            [residency_set addAllocation:allocation];
         }
     }
 
@@ -112,7 +61,8 @@ void MTBindingSet::Apply(const std::map<ShaderType, id<MTL4ArgumentTable>>& argu
     for (const auto& bind_key : bindless_bind_keys_) {
         decltype(auto) shader = CastToImpl<MTPipeline>(pipeline)->GetShader(bind_key.shader_type);
         uint32_t index = CastToImpl<MTShader>(shader)->GetIndex(bind_key);
-        SetBuffer(argument_tables.at(bind_key.shader_type), buffer, 0, index);
+        decltype(auto) argument_table = argument_tables.at(bind_key.shader_type);
+        [argument_table setAddress:buffer.gpuAddress atIndex:index];
     }
     [residency_set addAllocation:buffer];
 }
