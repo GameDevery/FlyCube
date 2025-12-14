@@ -1,8 +1,7 @@
 #pragma once
 #include "Instance/BaseTypes.h"
-#include "Instance/QueryInterface.h"
 
-class BindingSetLayout : public QueryInterface {
+class BindingSetLayout {
 public:
     virtual ~BindingSetLayout() = default;
 };

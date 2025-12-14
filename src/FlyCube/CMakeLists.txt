@@ -134,7 +134,6 @@ list(APPEND Instance
     Instance/EnumUtils.h
     Instance/Instance.cpp
     Instance/Instance.h
-    Instance/QueryInterface.h
 )
 
 list(APPEND Memory
@@ -251,6 +250,7 @@ list(APPEND Swapchain
 list(APPEND Utilities
     Utilities/Asset.cpp
     Utilities/Asset.h
+    Utilities/Cast.h
     Utilities/Check.h
     Utilities/Common.cpp
     Utilities/Common.h

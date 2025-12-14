@@ -2,6 +2,7 @@
 
 #include "Device/MTDevice.h"
 #include "Memory/MTMemory.h"
+#include "Utilities/Cast.h"
 #include "Utilities/Logging.h"
 #include "Utilities/NotReached.h"
 
@@ -113,7 +114,7 @@ void MTTexture::CommitMemory(MemoryType memory_type)
 void MTTexture::BindMemory(const std::shared_ptr<Memory>& memory, uint64_t offset)
 {
     memory_type_ = memory->GetMemoryType();
-    id<MTLHeap> mt_heap = memory->As<MTMemory>().GetHeap();
+    id<MTLHeap> mt_heap = CastToImpl<MTMemory>(memory)->GetHeap();
     MTLTextureDescriptor* texture_descriptor = GetTextureDescriptor(device_, memory_type_, texture_desc);
     texture_ = [mt_heap newTextureWithDescriptor:texture_descriptor offset:offset];
     if (!texture_) {

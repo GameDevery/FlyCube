@@ -2,6 +2,7 @@
 
 #include "BindingSetLayout/VKBindingSetLayout.h"
 #include "Device/VKDevice.h"
+#include "Utilities/Cast.h"
 #include "View/VKView.h"
 
 #include <deque>
@@ -73,8 +74,8 @@ const std::vector<vk::DescriptorSet>& VKBindingSet::GetDescriptorSets() const
 
 void VKBindingSet::WriteDescriptor(std::vector<vk::WriteDescriptorSet>& descriptors, const BindingDesc& binding)
 {
-    decltype(auto) vk_view = binding.view->As<VKView>();
-    vk::WriteDescriptorSet descriptor = vk_view.GetDescriptor();
+    decltype(auto) vk_view = CastToImpl<VKView>(binding.view);
+    vk::WriteDescriptorSet descriptor = vk_view->GetDescriptor();
     descriptor.descriptorType = GetDescriptorType(binding.bind_key.view_type);
     descriptor.dstSet = descriptor_sets_[binding.bind_key.space];
     descriptor.dstBinding = binding.bind_key.slot;

@@ -1,5 +1,4 @@
 #pragma once
-#include "Instance/QueryInterface.h"
 #include "Memory/Memory.h"
 #include "View/View.h"
 
@@ -14,7 +13,7 @@ struct MemoryRequirements {
     uint32_t memory_type_bits;
 };
 
-class Resource : public QueryInterface {
+class Resource {
 public:
     virtual ~Resource() = default;
     virtual ResourceType GetResourceType() const = 0;

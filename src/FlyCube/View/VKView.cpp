@@ -45,7 +45,7 @@ VKView::VKView(VKDevice& device, const std::shared_ptr<VKResource>& resource, co
 
     if (view_desc_.bindless) {
         bindless_view_pool_ = std::make_shared<VKBindlessTypedViewPool>(device_, view_desc_.view_type, 1);
-        bindless_view_pool_->WriteViewImpl(0, *this);
+        bindless_view_pool_->WriteViewImpl(0, this);
     }
 }
 

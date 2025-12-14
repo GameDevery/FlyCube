@@ -5,7 +5,6 @@
 #include "CommandQueue/CommandQueue.h"
 #include "Fence/Fence.h"
 #include "Instance/BaseTypes.h"
-#include "Instance/QueryInterface.h"
 #include "Memory/Memory.h"
 #include "Pipeline/Pipeline.h"
 #include "QueryHeap/QueryHeap.h"
@@ -22,7 +21,7 @@ struct MemoryBudget {
     uint64_t usage;
 };
 
-class Device : public QueryInterface {
+class Device {
 public:
     virtual ~Device() = default;
     virtual std::shared_ptr<Memory> AllocateMemory(uint64_t size,

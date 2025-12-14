@@ -1,8 +1,7 @@
 #pragma once
 #include "Instance/BaseTypes.h"
-#include "Instance/QueryInterface.h"
 
-class Memory : public QueryInterface {
+class Memory {
 public:
     virtual ~Memory() = default;
     virtual MemoryType GetMemoryType() const = 0;

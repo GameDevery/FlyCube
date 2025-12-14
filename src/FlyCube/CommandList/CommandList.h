@@ -1,7 +1,6 @@
 #pragma once
 #include "BindingSet/BindingSet.h"
 #include "Instance/BaseTypes.h"
-#include "Instance/QueryInterface.h"
 #include "Pipeline/Pipeline.h"
 #include "QueryHeap/QueryHeap.h"
 #include "Resource/Resource.h"
@@ -12,7 +11,7 @@
 #include <array>
 #include <memory>
 
-class CommandList : public QueryInterface {
+class CommandList {
 public:
     virtual ~CommandList() = default;
     virtual void Reset() = 0;

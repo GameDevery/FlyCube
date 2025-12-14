@@ -1,10 +1,9 @@
 #pragma once
 #include "Instance/BaseTypes.h"
-#include "Instance/QueryInterface.h"
 
 #include <cstdint>
 
-class Fence : public QueryInterface {
+class Fence {
 public:
     virtual ~Fence() = default;
     virtual uint64_t GetCompletedValue() = 0;

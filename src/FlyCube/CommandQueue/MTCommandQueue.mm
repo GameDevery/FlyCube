@@ -5,6 +5,7 @@
 #include "Device/MTDevice.h"
 #include "Fence/MTFence.h"
 #include "Instance/MTInstance.h"
+#include "Utilities/Cast.h"
 
 MTCommandQueue::MTCommandQueue(MTDevice& device)
     : device_(device)
@@ -15,14 +16,14 @@ MTCommandQueue::MTCommandQueue(MTDevice& device)
 
 void MTCommandQueue::Wait(const std::shared_ptr<Fence>& fence, uint64_t value)
 {
-    decltype(auto) mt_fence = fence->As<MTFence>();
-    [command_queue_ waitForEvent:mt_fence.GetSharedEvent() value:value];
+    decltype(auto) mt_fence = CastToImpl<MTFence>(fence);
+    [command_queue_ waitForEvent:mt_fence->GetSharedEvent() value:value];
 }
 
 void MTCommandQueue::Signal(const std::shared_ptr<Fence>& fence, uint64_t value)
 {
-    decltype(auto) mt_fence = fence->As<MTFence>();
-    [command_queue_ signalEvent:mt_fence.GetSharedEvent() value:value];
+    decltype(auto) mt_fence = CastToImpl<MTFence>(fence);
+    [command_queue_ signalEvent:mt_fence->GetSharedEvent() value:value];
 }
 
 void MTCommandQueue::ExecuteCommandLists(const std::vector<std::shared_ptr<CommandList>>& command_lists)
@@ -32,8 +33,8 @@ void MTCommandQueue::ExecuteCommandLists(const std::vector<std::shared_ptr<Comma
         if (!command_list) {
             continue;
         }
-        decltype(auto) record_command_list = command_list->As<RecordCommandList<MTCommandList>>();
-        command_buffers.push_back(record_command_list.OnSubmit()->GetCommandBuffer());
+        decltype(auto) record_command_list = CastToImpl<RecordCommandList<MTCommandList>>(command_list);
+        command_buffers.push_back(record_command_list->OnSubmit()->GetCommandBuffer());
     }
 
     [device_.GetBindlessArgumentBuffer().GetResidencySet() commit];

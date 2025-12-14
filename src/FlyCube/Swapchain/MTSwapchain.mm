@@ -4,6 +4,7 @@
 #include "Fence/MTFence.h"
 #include "Instance/MTInstance.h"
 #include "Resource/MTTexture.h"
+#include "Utilities/Cast.h"
 
 MTSwapchain::MTSwapchain(MTDevice& device,
                          const NativeSurface& surface,
@@ -57,16 +58,16 @@ std::shared_ptr<Resource> MTSwapchain::GetBackBuffer(uint32_t buffer)
 
 uint32_t MTSwapchain::NextImage(const std::shared_ptr<Fence>& fence, uint64_t signal_value)
 {
-    decltype(auto) mt_fence = fence->As<MTFence>();
+    decltype(auto) mt_fence = CastToImpl<MTFence>(fence);
     auto queue = device_.GetMTCommandQueue();
-    [queue signalEvent:mt_fence.GetSharedEvent() value:signal_value];
+    [queue signalEvent:mt_fence->GetSharedEvent() value:signal_value];
     return frame_index_ = (frame_index_ + 1) % frame_count_;
 }
 
 void MTSwapchain::Present(const std::shared_ptr<Fence>& fence, uint64_t wait_value)
 {
-    decltype(auto) mt_fence = fence->As<MTFence>();
-    decltype(auto) resource = back_buffers_[frame_index_]->As<MTResource>();
+    decltype(auto) mt_fence = CastToImpl<MTFence>(fence);
+    decltype(auto) resource = CastToImpl<MTResource>(back_buffers_[frame_index_]);
     auto queue = device_.GetMTCommandQueue();
     id<CAMetalDrawable> drawable = [layer_ nextDrawable];
 
@@ -75,13 +76,13 @@ void MTSwapchain::Present(const std::shared_ptr<Fence>& fence, uint64_t wait_val
     [command_buffer beginCommandBufferWithAllocator:allocator];
 
     auto residency_set = device_.CreateResidencySet();
-    [residency_set addAllocation:resource.GetTexture()];
+    [residency_set addAllocation:resource->GetTexture()];
     [residency_set addAllocation:drawable.texture];
     [residency_set commit];
     [command_buffer useResidencySet:residency_set];
 
     auto compute_encoder = [command_buffer computeCommandEncoder];
-    [compute_encoder copyFromTexture:resource.GetTexture()
+    [compute_encoder copyFromTexture:resource->GetTexture()
                          sourceSlice:0
                          sourceLevel:0
                         sourceOrigin:{ 0, 0, 0 }
@@ -94,7 +95,7 @@ void MTSwapchain::Present(const std::shared_ptr<Fence>& fence, uint64_t wait_val
 
     [command_buffer endCommandBuffer];
 
-    [queue waitForEvent:mt_fence.GetSharedEvent() value:wait_value];
+    [queue waitForEvent:mt_fence->GetSharedEvent() value:wait_value];
     [queue waitForDrawable:drawable];
     [queue commit:&command_buffer count:1];
     [queue signalDrawable:drawable];

@@ -1,6 +1,7 @@
 #include "BindlessTypedViewPool/MTBindlessTypedViewPool.h"
 
 #include "Device/MTDevice.h"
+#include "Utilities/Cast.h"
 #include "Utilities/Check.h"
 #include "View/MTView.h"
 
@@ -23,14 +24,14 @@ uint32_t MTBindlessTypedViewPool::GetViewCount() const
 
 void MTBindlessTypedViewPool::WriteView(uint32_t index, const std::shared_ptr<View>& view)
 {
-    WriteViewImpl(index, view->As<MTView>());
+    WriteViewImpl(index, CastToImpl<MTView>(view));
 }
 
-void MTBindlessTypedViewPool::WriteViewImpl(uint32_t index, MTView& view)
+void MTBindlessTypedViewPool::WriteViewImpl(uint32_t index, MTView* view)
 {
     DCHECK(index < view_count_);
     uint64_t* arguments = static_cast<uint64_t*>(range_->GetArgumentBuffer().contents);
     const uint32_t offset = range_->GetOffset() + index;
-    arguments[offset] = view.GetGpuAddress();
-    range_->AddAllocation(offset, view.GetNativeResource());
+    arguments[offset] = view->GetGpuAddress();
+    range_->AddAllocation(offset, view->GetNativeResource());
 }

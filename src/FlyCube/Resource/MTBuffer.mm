@@ -2,6 +2,7 @@
 
 #include "Device/MTDevice.h"
 #include "Memory/MTMemory.h"
+#include "Utilities/Cast.h"
 #include "Utilities/Logging.h"
 
 MTBuffer::MTBuffer(PassKey<MTBuffer> pass_key, MTDevice& device)
@@ -35,7 +36,7 @@ void MTBuffer::CommitMemory(MemoryType memory_type)
 void MTBuffer::BindMemory(const std::shared_ptr<Memory>& memory, uint64_t offset)
 {
     memory_type_ = memory->GetMemoryType();
-    id<MTLHeap> mt_heap = memory->As<MTMemory>().GetHeap();
+    id<MTLHeap> mt_heap = CastToImpl<MTMemory>(memory)->GetHeap();
     MTLResourceOptions options = ConvertStorageMode(memory_type_) << MTLResourceStorageModeShift;
     buffer_ = [mt_heap newBufferWithLength:buffer_size options:options offset:offset];
     if (!buffer_) {

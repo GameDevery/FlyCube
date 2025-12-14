@@ -1,11 +1,10 @@
 #pragma once
 #include "Device/Device.h"
-#include "Instance/QueryInterface.h"
 
 #include <memory>
 #include <string>
 
-class Adapter : public QueryInterface {
+class Adapter {
 public:
     virtual ~Adapter() = default;
     virtual const std::string& GetName() const = 0;

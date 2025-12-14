@@ -14,7 +14,7 @@ public:
     uint32_t GetViewCount() const override;
     void WriteView(uint32_t index, const std::shared_ptr<View>& view) override;
 
-    void WriteViewImpl(uint32_t index, DXView& view);
+    void WriteViewImpl(uint32_t index, DXView* view);
 
 private:
     uint32_t view_count_;

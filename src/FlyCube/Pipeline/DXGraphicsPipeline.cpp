@@ -3,6 +3,7 @@
 #include "BindingSetLayout/DXBindingSetLayout.h"
 #include "Device/DXDevice.h"
 #include "Pipeline/DXStateBuilder.h"
+#include "Utilities/Cast.h"
 #include "Utilities/Check.h"
 #include "Utilities/NotReached.h"
 #include "View/DXView.h"
@@ -241,8 +242,8 @@ DXGraphicsPipeline::DXGraphicsPipeline(DXDevice& device, const GraphicsPipelineD
 {
     DXStateBuilder graphics_state_builder;
 
-    decltype(auto) dx_layout = desc_.layout->As<DXBindingSetLayout>();
-    root_signature_ = dx_layout.GetRootSignature();
+    decltype(auto) dx_layout = CastToImpl<DXBindingSetLayout>(desc_.layout);
+    root_signature_ = dx_layout->GetRootSignature();
     std::deque<std::string> semantic_names;
     for (const auto& shader : desc_.shaders) {
         decltype(auto) blob = shader->GetBlob();

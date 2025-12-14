@@ -3,6 +3,7 @@
 #include "CommandList/VKCommandList.h"
 #include "Device/VKDevice.h"
 #include "Fence/VKTimelineSemaphore.h"
+#include "Utilities/Cast.h"
 
 VKCommandQueue::VKCommandQueue(VKDevice& device, CommandListType type, uint32_t queue_family_index)
     : device_(device)
@@ -13,7 +14,7 @@ VKCommandQueue::VKCommandQueue(VKDevice& device, CommandListType type, uint32_t 
 
 void VKCommandQueue::Wait(const std::shared_ptr<Fence>& fence, uint64_t value)
 {
-    decltype(auto) vk_fence = fence->As<VKTimelineSemaphore>();
+    decltype(auto) vk_fence = CastToImpl<VKTimelineSemaphore>(fence);
     vk::TimelineSemaphoreSubmitInfo timeline_info = {};
     timeline_info.waitSemaphoreValueCount = 1;
     timeline_info.pWaitSemaphoreValues = &value;
@@ -21,7 +22,7 @@ void VKCommandQueue::Wait(const std::shared_ptr<Fence>& fence, uint64_t value)
     vk::SubmitInfo signal_submit_info = {};
     signal_submit_info.pNext = &timeline_info;
     signal_submit_info.waitSemaphoreCount = 1;
-    signal_submit_info.pWaitSemaphores = &vk_fence.GetFence();
+    signal_submit_info.pWaitSemaphores = &vk_fence->GetFence();
     vk::PipelineStageFlags wait_dst_stage_mask = vk::PipelineStageFlagBits::eAllCommands;
     signal_submit_info.pWaitDstStageMask = &wait_dst_stage_mask;
     std::ignore = queue_.submit(1, &signal_submit_info, {});
@@ -29,7 +30,7 @@ void VKCommandQueue::Wait(const std::shared_ptr<Fence>& fence, uint64_t value)
 
 void VKCommandQueue::Signal(const std::shared_ptr<Fence>& fence, uint64_t value)
 {
-    decltype(auto) vk_fence = fence->As<VKTimelineSemaphore>();
+    decltype(auto) vk_fence = CastToImpl<VKTimelineSemaphore>(fence);
     vk::TimelineSemaphoreSubmitInfo timeline_info = {};
     timeline_info.signalSemaphoreValueCount = 1;
     timeline_info.pSignalSemaphoreValues = &value;
@@ -37,7 +38,7 @@ void VKCommandQueue::Signal(const std::shared_ptr<Fence>& fence, uint64_t value)
     vk::SubmitInfo signal_submit_info = {};
     signal_submit_info.pNext = &timeline_info;
     signal_submit_info.signalSemaphoreCount = 1;
-    signal_submit_info.pSignalSemaphores = &vk_fence.GetFence();
+    signal_submit_info.pSignalSemaphores = &vk_fence->GetFence();
     std::ignore = queue_.submit(1, &signal_submit_info, {});
 }
 
@@ -48,8 +49,8 @@ void VKCommandQueue::ExecuteCommandLists(const std::vector<std::shared_ptr<Comma
         if (!command_list) {
             continue;
         }
-        decltype(auto) vk_command_list = command_list->As<VKCommandList>();
-        vk_command_lists.emplace_back(vk_command_list.GetCommandList());
+        decltype(auto) vk_command_list = CastToImpl<VKCommandList>(command_list);
+        vk_command_lists.emplace_back(vk_command_list->GetCommandList());
     }
 
     vk::SubmitInfo submit_info = {};

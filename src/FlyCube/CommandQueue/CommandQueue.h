@@ -1,9 +1,8 @@
 #pragma once
 #include "CommandList/CommandList.h"
 #include "Fence/Fence.h"
-#include "Instance/QueryInterface.h"
 
-class CommandQueue : public QueryInterface {
+class CommandQueue {
 public:
     virtual ~CommandQueue() = default;
     virtual void Wait(const std::shared_ptr<Fence>& fence, uint64_t value) = 0;

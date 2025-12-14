@@ -1,11 +1,10 @@
 #pragma once
 #include "Fence/Fence.h"
-#include "Instance/QueryInterface.h"
 #include "Resource/Resource.h"
 
 #include <gli/format.hpp>
 
-class Swapchain : public QueryInterface {
+class Swapchain {
 public:
     virtual ~Swapchain() = default;
     virtual gli::format GetFormat() const = 0;

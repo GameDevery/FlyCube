@@ -2,6 +2,7 @@
 
 #include "Device/VKDevice.h"
 #include "Memory/VKMemory.h"
+#include "Utilities/Cast.h"
 
 VKBuffer::VKBuffer(PassKey<VKBuffer> pass_key, VKDevice& device)
     : device_(device)
@@ -73,7 +74,7 @@ void VKBuffer::CommitMemory(MemoryType memory_type)
 void VKBuffer::BindMemory(const std::shared_ptr<Memory>& memory, uint64_t offset)
 {
     memory_type_ = memory->GetMemoryType();
-    vk_memory_ = memory->As<VKMemory>().GetMemory();
+    vk_memory_ = CastToImpl<VKMemory>(memory)->GetMemory();
     device_.GetDevice().bindBufferMemory(GetBuffer(), vk_memory_, offset);
 }
 

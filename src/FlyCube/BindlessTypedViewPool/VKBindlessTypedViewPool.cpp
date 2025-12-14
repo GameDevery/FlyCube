@@ -2,6 +2,7 @@
 
 #include "Device/VKDevice.h"
 #include "GPUDescriptorPool/VKGPUDescriptorPoolRange.h"
+#include "Utilities/Cast.h"
 #include "Utilities/Check.h"
 #include "View/VKView.h"
 
@@ -26,13 +27,13 @@ uint32_t VKBindlessTypedViewPool::GetViewCount() const
 
 void VKBindlessTypedViewPool::WriteView(uint32_t index, const std::shared_ptr<View>& view)
 {
-    WriteViewImpl(index, view->As<VKView>());
+    WriteViewImpl(index, CastToImpl<VKView>(view));
 }
 
-void VKBindlessTypedViewPool::WriteViewImpl(uint32_t index, VKView& view)
+void VKBindlessTypedViewPool::WriteViewImpl(uint32_t index, VKView* view)
 {
     DCHECK(index < view_count_);
-    vk::WriteDescriptorSet descriptor = view.GetDescriptor();
+    vk::WriteDescriptorSet descriptor = view->GetDescriptor();
     descriptor.dstSet = range_->GetDescriptorSet();
     descriptor.dstBinding = 0;
     descriptor.dstArrayElement = range_->GetOffset() + index;

@@ -1,12 +1,11 @@
 #pragma once
 #include "Instance/BaseTypes.h"
-#include "Instance/QueryInterface.h"
 
 #include <memory>
 
 class Resource;
 
-class View : public QueryInterface {
+class View {
 public:
     virtual ~View() = default;
     virtual std::shared_ptr<Resource> GetResource() = 0;

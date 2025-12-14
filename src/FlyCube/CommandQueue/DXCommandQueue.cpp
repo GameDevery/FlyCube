@@ -4,6 +4,7 @@
 #include "Device/DXDevice.h"
 #include "Fence/DXFence.h"
 #include "Resource/DXResource.h"
+#include "Utilities/Cast.h"
 #include "Utilities/DXUtility.h"
 #include "Utilities/NotReached.h"
 
@@ -32,14 +33,14 @@ DXCommandQueue::DXCommandQueue(DXDevice& device, CommandListType type)
 
 void DXCommandQueue::Wait(const std::shared_ptr<Fence>& fence, uint64_t value)
 {
-    decltype(auto) dx_fence = fence->As<DXFence>();
-    CHECK_HRESULT(command_queue_->Wait(dx_fence.GetFence().Get(), value));
+    decltype(auto) dx_fence = CastToImpl<DXFence>(fence);
+    CHECK_HRESULT(command_queue_->Wait(dx_fence->GetFence().Get(), value));
 }
 
 void DXCommandQueue::Signal(const std::shared_ptr<Fence>& fence, uint64_t value)
 {
-    decltype(auto) dx_fence = fence->As<DXFence>();
-    CHECK_HRESULT(command_queue_->Signal(dx_fence.GetFence().Get(), value));
+    decltype(auto) dx_fence = CastToImpl<DXFence>(fence);
+    CHECK_HRESULT(command_queue_->Signal(dx_fence->GetFence().Get(), value));
 }
 
 void DXCommandQueue::ExecuteCommandLists(const std::vector<std::shared_ptr<CommandList>>& command_lists)
@@ -49,8 +50,8 @@ void DXCommandQueue::ExecuteCommandLists(const std::vector<std::shared_ptr<Comma
         if (!command_list) {
             continue;
         }
-        decltype(auto) dx_command_list = command_list->As<DXCommandList>();
-        dx_command_lists.emplace_back(dx_command_list.GetCommandList().Get());
+        decltype(auto) dx_command_list = CastToImpl<DXCommandList>(command_list);
+        dx_command_lists.emplace_back(dx_command_list->GetCommandList().Get());
     }
     if (!dx_command_lists.empty()) {
         command_queue_->ExecuteCommandLists(dx_command_lists.size(), dx_command_lists.data());

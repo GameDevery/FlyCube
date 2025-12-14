@@ -2,6 +2,7 @@
 
 #include "Device/MTDevice.h"
 #include "Shader/MTShader.h"
+#include "Utilities/Cast.h"
 #include "Utilities/Check.h"
 #include "Utilities/Logging.h"
 #include "Utilities/NotReached.h"
@@ -155,7 +156,7 @@ void MTGraphicsPipeline::CreatePipeline()
         std::conditional_t<is_mesh_pipeline, MTL4MeshRenderPipelineDescriptor, MTL4RenderPipelineDescriptor>;
     RenderPipelineDescriptorType* pipeline_descriptor = [RenderPipelineDescriptorType new];
     for (const auto& shader : desc_.shaders) {
-        MTL4LibraryFunctionDescriptor* function_descriptor = shader->As<MTShader>().GetFunctionDescriptor();
+        MTL4LibraryFunctionDescriptor* function_descriptor = CastToImpl<MTShader>(shader)->GetFunctionDescriptor();
         switch (shader->GetType()) {
         case ShaderType::kVertex:
             if constexpr (!is_mesh_pipeline) {

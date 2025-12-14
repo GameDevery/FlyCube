@@ -2,6 +2,7 @@
 
 #include "Device/MTDevice.h"
 #include "Shader/MTShader.h"
+#include "Utilities/Cast.h"
 #include "Utilities/Logging.h"
 #include "Utilities/NotReached.h"
 
@@ -12,7 +13,7 @@ MTComputePipeline::MTComputePipeline(MTDevice& device, const ComputePipelineDesc
 {
     MTL4ComputePipelineDescriptor* pipeline_descriptor = [MTL4ComputePipelineDescriptor new];
     assert(desc_.shader->GetType() == ShaderType::kCompute);
-    pipeline_descriptor.computeFunctionDescriptor = desc_.shader->As<MTShader>().GetFunctionDescriptor();
+    pipeline_descriptor.computeFunctionDescriptor = CastToImpl<MTShader>(desc_.shader)->GetFunctionDescriptor();
 
     decltype(auto) reflection = desc_.shader->GetReflection();
     decltype(auto) numthreads = reflection->GetShaderFeatureInfo().numthreads;

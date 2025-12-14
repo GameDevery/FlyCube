@@ -2,6 +2,7 @@
 
 #include "BindingSetLayout/VKBindingSetLayout.h"
 #include "Device/VKDevice.h"
+#include "Utilities/Cast.h"
 #include "Utilities/NotReached.h"
 
 namespace {
@@ -45,8 +46,8 @@ VKPipeline::VKPipeline(VKDevice& device,
                        const std::shared_ptr<BindingSetLayout>& layout)
     : device_(device)
 {
-    decltype(auto) vk_layout = layout->As<VKBindingSetLayout>();
-    pipeline_layout_ = vk_layout.GetPipelineLayout();
+    decltype(auto) vk_layout = CastToImpl<VKBindingSetLayout>(layout);
+    pipeline_layout_ = vk_layout->GetPipelineLayout();
 
     for (const auto& shader : shaders) {
         decltype(auto) blob = shader->GetBlob();

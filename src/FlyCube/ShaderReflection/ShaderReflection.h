@@ -1,6 +1,5 @@
 #pragma once
 #include "Instance/BaseTypes.h"
-#include "Instance/QueryInterface.h"
 
 #include <array>
 #include <memory>
@@ -66,7 +65,7 @@ struct ShaderFeatureInfo {
     std::array<uint32_t, 3> numthreads = {};
 };
 
-class ShaderReflection : public QueryInterface {
+class ShaderReflection {
 public:
     virtual ~ShaderReflection() = default;
     virtual const std::vector<EntryPoint>& GetEntryPoints() const = 0;

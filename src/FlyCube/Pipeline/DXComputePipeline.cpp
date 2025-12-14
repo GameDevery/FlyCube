@@ -4,6 +4,7 @@
 #include "Device/DXDevice.h"
 #include "Pipeline/DXStateBuilder.h"
 #include "Shader/Shader.h"
+#include "Utilities/Cast.h"
 #include "Utilities/DXGIFormatHelper.h"
 #include "View/DXView.h"
 
@@ -17,8 +18,8 @@ DXComputePipeline::DXComputePipeline(DXDevice& device, const ComputePipelineDesc
 {
     DXStateBuilder compute_state_builder;
 
-    decltype(auto) dx_layout = desc_.layout->As<DXBindingSetLayout>();
-    root_signature_ = dx_layout.GetRootSignature();
+    decltype(auto) dx_layout = CastToImpl<DXBindingSetLayout>(desc_.layout);
+    root_signature_ = dx_layout->GetRootSignature();
 
     decltype(auto) blob = desc_.shader->GetBlob();
     D3D12_SHADER_BYTECODE shader_bytecode = { blob.data(), blob.size() };

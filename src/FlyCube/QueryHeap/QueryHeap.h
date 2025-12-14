@@ -1,8 +1,7 @@
 #pragma once
 #include "Instance/BaseTypes.h"
-#include "Instance/QueryInterface.h"
 
-class QueryHeap : public QueryInterface {
+class QueryHeap {
 public:
     virtual ~QueryHeap() = default;
     virtual QueryHeapType GetType() const = 0;

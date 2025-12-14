@@ -6,6 +6,7 @@
 #include "Fence/VKTimelineSemaphore.h"
 #include "Instance/VKInstance.h"
 #include "Resource/VKTexture.h"
+#include "Utilities/Cast.h"
 #include "Utilities/NotReached.h"
 #include "Utilities/VKUtility.h"
 
@@ -187,15 +188,15 @@ uint32_t VKSwapchain::NextImage(const std::shared_ptr<Fence>& fence, uint64_t si
         swapchain_.get(), UINT64_MAX, image_available_semaphores_[image_available_fence_index_].get(), nullptr,
         &frame_index_);
 
-    decltype(auto) vk_swapchain_fence = swapchain_fence_->As<VKTimelineSemaphore>();
-    decltype(auto) vk_fence = fence->As<VKTimelineSemaphore>();
+    decltype(auto) vk_swapchain_fence = CastToImpl<VKTimelineSemaphore>(swapchain_fence_);
+    decltype(auto) vk_fence = CastToImpl<VKTimelineSemaphore>(fence);
 
     uint64_t wait_semaphore_values[] = { 0 };
     vk::Semaphore wait_semaphores[] = { image_available_semaphores_[image_available_fence_index_].get() };
 
     image_available_fence_values_[image_available_fence_index_] = ++fence_value_;
     uint64_t signal_semaphore_values[] = { signal_value, image_available_fence_values_[image_available_fence_index_] };
-    vk::Semaphore signal_semaphores[] = { vk_fence.GetFence(), vk_swapchain_fence.GetFence() };
+    vk::Semaphore signal_semaphores[] = { vk_fence->GetFence(), vk_swapchain_fence->GetFence() };
 
     vk::TimelineSemaphoreSubmitInfo timeline_info = {};
     timeline_info.waitSemaphoreValueCount = std::size(wait_semaphore_values);
@@ -218,10 +219,10 @@ uint32_t VKSwapchain::NextImage(const std::shared_ptr<Fence>& fence, uint64_t si
 
 void VKSwapchain::Present(const std::shared_ptr<Fence>& fence, uint64_t wait_value)
 {
-    decltype(auto) vk_fence = fence->As<VKTimelineSemaphore>();
+    decltype(auto) vk_fence = CastToImpl<VKTimelineSemaphore>(fence);
 
     uint64_t wait_semaphore_values[] = { wait_value };
-    vk::Semaphore wait_semaphores[] = { vk_fence.GetFence() };
+    vk::Semaphore wait_semaphores[] = { vk_fence->GetFence() };
     uint64_t signal_semaphore_values[] = { 0 };
     vk::Semaphore signal_semaphores[] = { rendering_finished_semaphores_[frame_index_].get() };
 

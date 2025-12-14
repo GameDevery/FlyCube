@@ -1,6 +1,7 @@
 #include "Resource/VKAccelerationStructure.h"
 
 #include "Device/VKDevice.h"
+#include "Utilities/Cast.h"
 #include "Utilities/NotReached.h"
 
 namespace {
@@ -30,7 +31,7 @@ std::shared_ptr<VKAccelerationStructure> VKAccelerationStructure::CreateAccelera
     const AccelerationStructureDesc& desc)
 {
     vk::AccelerationStructureCreateInfoKHR acceleration_structure_create_info = {};
-    acceleration_structure_create_info.buffer = desc.buffer->As<VKAccelerationStructure>().GetBuffer();
+    acceleration_structure_create_info.buffer = CastToImpl<VKAccelerationStructure>(desc.buffer)->GetBuffer();
     acceleration_structure_create_info.offset = desc.buffer_offset;
     acceleration_structure_create_info.size = desc.size;
     acceleration_structure_create_info.type = Convert(desc.type);

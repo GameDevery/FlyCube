@@ -3,6 +3,7 @@
 #include "BindingSetLayout/DXBindingSetLayout.h"
 #include "Device/DXDevice.h"
 #include "GPUDescriptorPool/DXGPUDescriptorPoolRange.h"
+#include "Utilities/Cast.h"
 #include "View/DXView.h"
 
 namespace {
@@ -128,6 +129,6 @@ void DXBindingSet::WriteDescriptor(const BindingDesc& binding)
 {
     decltype(auto) binding_layout = layout_->GetLayout().at(binding.bind_key);
     std::shared_ptr<DXGPUDescriptorPoolRange> heap_range = descriptor_ranges_.at(binding_layout.heap_type);
-    decltype(auto) src_cpu_handle = binding.view->As<DXView>().GetHandle();
+    decltype(auto) src_cpu_handle = CastToImpl<DXView>(binding.view)->GetHandle();
     heap_range->CopyCpuHandle(binding_layout.heap_offset, src_cpu_handle);
 }

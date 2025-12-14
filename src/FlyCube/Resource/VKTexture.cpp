@@ -2,6 +2,7 @@
 
 #include "Device/VKDevice.h"
 #include "Memory/VKMemory.h"
+#include "Utilities/Cast.h"
 
 VKTexture::VKTexture(PassKey<VKTexture> pass_key, VKDevice& device)
     : device_(device)
@@ -106,7 +107,7 @@ void VKTexture::CommitMemory(MemoryType memory_type)
 void VKTexture::BindMemory(const std::shared_ptr<Memory>& memory, uint64_t offset)
 {
     memory_type_ = memory->GetMemoryType();
-    vk::DeviceMemory vk_memory = memory->As<VKMemory>().GetMemory();
+    vk::DeviceMemory vk_memory = CastToImpl<VKMemory>(memory)->GetMemory();
     device_.GetDevice().bindImageMemory(GetImage(), vk_memory, offset);
 }
 

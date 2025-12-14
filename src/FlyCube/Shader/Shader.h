@@ -1,11 +1,10 @@
 #pragma once
 #include "Instance/BaseTypes.h"
-#include "Instance/QueryInterface.h"
 #include "ShaderReflection/ShaderReflection.h"
 
 #include <memory>
 
-class Shader : public QueryInterface {
+class Shader {
 public:
     virtual ~Shader() = default;
     virtual ShaderType GetType() const = 0;

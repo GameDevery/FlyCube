@@ -1,12 +1,11 @@
 #pragma once
-#include "Instance/QueryInterface.h"
 
 #include <cstdint>
 #include <memory>
 
 class View;
 
-class BindlessTypedViewPool : public QueryInterface {
+class BindlessTypedViewPool {
 public:
     virtual ~BindlessTypedViewPool() = default;
     virtual uint32_t GetBaseDescriptorId() const = 0;

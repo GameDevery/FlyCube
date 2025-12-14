@@ -3,6 +3,7 @@
 #include "BindingSetLayout/DXBindingSetLayout.h"
 #include "Device/DXDevice.h"
 #include "Shader/Shader.h"
+#include "Utilities/Cast.h"
 #include "Utilities/DXGIFormatHelper.h"
 #include "Utilities/SystemUtils.h"
 #include "View/DXView.h"
@@ -14,8 +15,8 @@ DXRayTracingPipeline::DXRayTracingPipeline(DXDevice& device, const RayTracingPip
     : device_(device)
     , desc_(desc)
 {
-    decltype(auto) dx_layout = desc_.layout->As<DXBindingSetLayout>();
-    root_signature_ = dx_layout.GetRootSignature();
+    decltype(auto) dx_layout = CastToImpl<DXBindingSetLayout>(desc_.layout);
+    root_signature_ = dx_layout->GetRootSignature();
 
     CD3DX12_STATE_OBJECT_DESC subobjects(D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE);
 

@@ -1,6 +1,7 @@
 #include "BindlessTypedViewPool/DXBindlessTypedViewPool.h"
 
 #include "Device/DXDevice.h"
+#include "Utilities/Cast.h"
 #include "Utilities/Check.h"
 #include "Utilities/NotReached.h"
 #include "View/DXView.h"
@@ -45,11 +46,11 @@ uint32_t DXBindlessTypedViewPool::GetViewCount() const
 
 void DXBindlessTypedViewPool::WriteView(uint32_t index, const std::shared_ptr<View>& view)
 {
-    WriteViewImpl(index, view->As<DXView>());
+    WriteViewImpl(index, CastToImpl<DXView>(view));
 }
 
-void DXBindlessTypedViewPool::WriteViewImpl(uint32_t index, DXView& view)
+void DXBindlessTypedViewPool::WriteViewImpl(uint32_t index, DXView* view)
 {
     DCHECK(index < view_count_);
-    range_->CopyCpuHandle(index, view.GetHandle());
+    range_->CopyCpuHandle(index, view->GetHandle());
 }
