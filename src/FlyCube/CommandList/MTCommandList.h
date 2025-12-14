@@ -123,6 +123,7 @@ private:
     MTDevice& device_;
     id<MTL4CommandAllocator> allocator_ = nullptr;
     id<MTL4CommandBuffer> command_buffer_ = nullptr;
+    std::vector<id<MTLBuffer>> patch_buffers_;
 
     static constexpr MTLStages kRenderStages = MTLStageVertex | MTLStageObject | MTLStageMesh | MTLStageFragment;
     static constexpr MTLStages kComputeStages = MTLStageDispatch | MTLStageBlit | MTLStageAccelerationStructure;
@@ -143,7 +144,6 @@ private:
         std::shared_ptr<MTBindingSet> binding_set;
         std::map<ShaderType, id<MTL4ArgumentTable>> argument_tables;
         id<MTLResidencySet> residency_set = nullptr;
-        std::vector<id<MTLBuffer>> patch_buffers;
         bool need_apply_pipeline = false;
         bool need_apply_binding_set = false;
         MTLStages render_barrier_after_stages = MTLStageAll;

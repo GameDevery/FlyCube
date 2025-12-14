@@ -597,7 +597,7 @@ void MTCommandList::BuildTopLevelAS(const std::shared_ptr<Resource>& src,
     acceleration_structure_desc.instanceDescriptorBuffer =
         MTL4BufferRangeMake(patched_instance_data.gpuAddress, patched_instance_data.length);
     acceleration_structure_desc.instanceDescriptorType = MTLAccelerationStructureInstanceDescriptorTypeIndirect;
-    state_->patch_buffers.push_back(patched_instance_data);
+    patch_buffers_.push_back(patched_instance_data);
 
     decltype(auto) mt_dst = dst->As<MTResource>();
     decltype(auto) mt_scratch = scratch->As<MTResource>();
