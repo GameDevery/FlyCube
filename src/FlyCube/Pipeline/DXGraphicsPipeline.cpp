@@ -242,7 +242,7 @@ DXGraphicsPipeline::DXGraphicsPipeline(DXDevice& device, const GraphicsPipelineD
 {
     DXStateBuilder graphics_state_builder;
 
-    decltype(auto) dx_layout = CastToImpl<DXBindingSetLayout>(desc_.layout);
+    auto* dx_layout = CastToImpl<DXBindingSetLayout>(desc_.layout);
     root_signature_ = dx_layout->GetRootSignature();
     std::deque<std::string> semantic_names;
     for (const auto& shader : desc_.shaders) {

@@ -18,7 +18,7 @@ DXComputePipeline::DXComputePipeline(DXDevice& device, const ComputePipelineDesc
 {
     DXStateBuilder compute_state_builder;
 
-    decltype(auto) dx_layout = CastToImpl<DXBindingSetLayout>(desc_.layout);
+    auto* dx_layout = CastToImpl<DXBindingSetLayout>(desc_.layout);
     root_signature_ = dx_layout->GetRootSignature();
 
     decltype(auto) blob = desc_.shader->GetBlob();

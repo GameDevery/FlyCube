@@ -58,7 +58,7 @@ std::shared_ptr<Resource> MTSwapchain::GetBackBuffer(uint32_t buffer)
 
 uint32_t MTSwapchain::NextImage(const std::shared_ptr<Fence>& fence, uint64_t signal_value)
 {
-    decltype(auto) mt_fence = CastToImpl<MTFence>(fence);
+    auto* mt_fence = CastToImpl<MTFence>(fence);
     auto queue = device_.GetMTCommandQueue();
     [queue signalEvent:mt_fence->GetSharedEvent() value:signal_value];
     return frame_index_ = (frame_index_ + 1) % frame_count_;
@@ -66,8 +66,8 @@ uint32_t MTSwapchain::NextImage(const std::shared_ptr<Fence>& fence, uint64_t si
 
 void MTSwapchain::Present(const std::shared_ptr<Fence>& fence, uint64_t wait_value)
 {
-    decltype(auto) mt_fence = CastToImpl<MTFence>(fence);
-    decltype(auto) resource = CastToImpl<MTResource>(back_buffers_[frame_index_]);
+    auto* mt_fence = CastToImpl<MTFence>(fence);
+    auto* resource = CastToImpl<MTResource>(back_buffers_[frame_index_]);
     auto queue = device_.GetMTCommandQueue();
     id<CAMetalDrawable> drawable = [layer_ nextDrawable];
 

@@ -16,13 +16,13 @@ MTCommandQueue::MTCommandQueue(MTDevice& device)
 
 void MTCommandQueue::Wait(const std::shared_ptr<Fence>& fence, uint64_t value)
 {
-    decltype(auto) mt_fence = CastToImpl<MTFence>(fence);
+    auto* mt_fence = CastToImpl<MTFence>(fence);
     [command_queue_ waitForEvent:mt_fence->GetSharedEvent() value:value];
 }
 
 void MTCommandQueue::Signal(const std::shared_ptr<Fence>& fence, uint64_t value)
 {
-    decltype(auto) mt_fence = CastToImpl<MTFence>(fence);
+    auto* mt_fence = CastToImpl<MTFence>(fence);
     [command_queue_ signalEvent:mt_fence->GetSharedEvent() value:value];
 }
 
@@ -33,7 +33,7 @@ void MTCommandQueue::ExecuteCommandLists(const std::vector<std::shared_ptr<Comma
         if (!command_list) {
             continue;
         }
-        decltype(auto) record_command_list = CastToImpl<RecordCommandList<MTCommandList>>(command_list);
+        auto* record_command_list = CastToImpl<RecordCommandList<MTCommandList>>(command_list);
         command_buffers.push_back(record_command_list->OnSubmit()->GetCommandBuffer());
     }
 

@@ -74,7 +74,7 @@ const std::vector<vk::DescriptorSet>& VKBindingSet::GetDescriptorSets() const
 
 void VKBindingSet::WriteDescriptor(std::vector<vk::WriteDescriptorSet>& descriptors, const BindingDesc& binding)
 {
-    decltype(auto) vk_view = CastToImpl<VKView>(binding.view);
+    auto* vk_view = CastToImpl<VKView>(binding.view);
     vk::WriteDescriptorSet descriptor = vk_view->GetDescriptor();
     descriptor.descriptorType = GetDescriptorType(binding.bind_key.view_type);
     descriptor.dstSet = descriptor_sets_[binding.bind_key.space];

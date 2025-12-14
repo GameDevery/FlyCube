@@ -188,8 +188,8 @@ uint32_t VKSwapchain::NextImage(const std::shared_ptr<Fence>& fence, uint64_t si
         swapchain_.get(), UINT64_MAX, image_available_semaphores_[image_available_fence_index_].get(), nullptr,
         &frame_index_);
 
-    decltype(auto) vk_swapchain_fence = CastToImpl<VKTimelineSemaphore>(swapchain_fence_);
-    decltype(auto) vk_fence = CastToImpl<VKTimelineSemaphore>(fence);
+    auto* vk_swapchain_fence = CastToImpl<VKTimelineSemaphore>(swapchain_fence_);
+    auto* vk_fence = CastToImpl<VKTimelineSemaphore>(fence);
 
     uint64_t wait_semaphore_values[] = { 0 };
     vk::Semaphore wait_semaphores[] = { image_available_semaphores_[image_available_fence_index_].get() };
@@ -219,7 +219,7 @@ uint32_t VKSwapchain::NextImage(const std::shared_ptr<Fence>& fence, uint64_t si
 
 void VKSwapchain::Present(const std::shared_ptr<Fence>& fence, uint64_t wait_value)
 {
-    decltype(auto) vk_fence = CastToImpl<VKTimelineSemaphore>(fence);
+    auto* vk_fence = CastToImpl<VKTimelineSemaphore>(fence);
 
     uint64_t wait_semaphore_values[] = { wait_value };
     vk::Semaphore wait_semaphores[] = { vk_fence->GetFence() };

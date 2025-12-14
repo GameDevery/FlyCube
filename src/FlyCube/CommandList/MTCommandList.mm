@@ -206,7 +206,7 @@ void MTCommandList::BeginRenderPass(const RenderPassDesc& render_pass_desc)
         attachment.loadAction = ConvertLoadAction(load_op);
         attachment.storeAction = ConvertStoreAction(store_op);
 
-        decltype(auto) mt_view = CastToImpl<MTView>(view);
+        auto* mt_view = CastToImpl<MTView>(view);
         attachment.level = mt_view->GetBaseMipLevel();
         attachment.slice = mt_view->GetBaseArrayLayer();
         attachment.texture = mt_view->GetTexture();
@@ -323,7 +323,7 @@ void MTCommandList::DrawIndexed(uint32_t index_count,
 void MTCommandList::DrawIndirect(const std::shared_ptr<Resource>& argument_buffer, uint64_t argument_buffer_offset)
 {
     ApplyGraphicsState();
-    decltype(auto) mt_argument_buffer = CastToImpl<MTResource>(argument_buffer)->GetBuffer();
+    id<MTLBuffer> mt_argument_buffer = CastToImpl<MTResource>(argument_buffer)->GetBuffer();
     AddAllocation(mt_argument_buffer);
     [state_->render_encoder drawPrimitives:MTLPrimitiveTypeTriangle
                             indirectBuffer:mt_argument_buffer.gpuAddress + argument_buffer_offset];
@@ -333,7 +333,7 @@ void MTCommandList::DrawIndexedIndirect(const std::shared_ptr<Resource>& argumen
                                         uint64_t argument_buffer_offset)
 {
     ApplyGraphicsState();
-    decltype(auto) mt_argument_buffer = CastToImpl<MTResource>(argument_buffer)->GetBuffer();
+    id<MTLBuffer> mt_argument_buffer = CastToImpl<MTResource>(argument_buffer)->GetBuffer();
     AddAllocation(mt_argument_buffer);
     MTLIndexType index_format = ConvertIndexType(state_->index_format);
     [state_->render_encoder drawIndexedPrimitives:MTLPrimitiveTypeTriangle
@@ -367,7 +367,7 @@ void MTCommandList::Dispatch(uint32_t thread_group_count_x,
                              uint32_t thread_group_count_y,
                              uint32_t thread_group_count_z)
 {
-    decltype(auto) mt_pipeline = CastToImpl<MTComputePipeline>(state_->pipeline);
+    auto* mt_pipeline = CastToImpl<MTComputePipeline>(state_->pipeline);
     MTLSize threadgroups_per_grid = { thread_group_count_x, thread_group_count_y, thread_group_count_z };
 
     OpenComputeEncoder();
@@ -379,8 +379,8 @@ void MTCommandList::Dispatch(uint32_t thread_group_count_x,
 
 void MTCommandList::DispatchIndirect(const std::shared_ptr<Resource>& argument_buffer, uint64_t argument_buffer_offset)
 {
-    decltype(auto) mt_argument_buffer = CastToImpl<MTResource>(argument_buffer)->GetBuffer();
-    decltype(auto) mt_pipeline = CastToImpl<MTComputePipeline>(state_->pipeline);
+    id<MTLBuffer> mt_argument_buffer = CastToImpl<MTResource>(argument_buffer)->GetBuffer();
+    auto* mt_pipeline = CastToImpl<MTComputePipeline>(state_->pipeline);
     AddAllocation(mt_argument_buffer);
 
     OpenComputeEncoder();
@@ -396,7 +396,7 @@ void MTCommandList::DispatchMesh(uint32_t thread_group_count_x,
                                  uint32_t thread_group_count_z)
 {
     ApplyGraphicsState();
-    decltype(auto) mt_pipeline = CastToImpl<MTGraphicsPipeline>(state_->pipeline);
+    auto* mt_pipeline = CastToImpl<MTGraphicsPipeline>(state_->pipeline);
     [state_->render_encoder
                drawMeshThreadgroups:MTLSizeMake(thread_group_count_x, thread_group_count_y, thread_group_count_z)
         threadsPerObjectThreadgroup:mt_pipeline->GetAmplificationNumthreads()
@@ -461,7 +461,7 @@ void MTCommandList::SetScissorRect(uint32_t left, uint32_t top, uint32_t right, 
 
 void MTCommandList::IASetIndexBuffer(const std::shared_ptr<Resource>& resource, uint64_t offset, gli::format format)
 {
-    decltype(auto) index_buffer = CastToImpl<MTResource>(resource)->GetBuffer();
+    id<MTLBuffer> index_buffer = CastToImpl<MTResource>(resource)->GetBuffer();
     AddAllocation(index_buffer);
     state_->index_buffer = index_buffer;
     state_->index_buffer_offset = offset;
@@ -470,7 +470,7 @@ void MTCommandList::IASetIndexBuffer(const std::shared_ptr<Resource>& resource, 
 
 void MTCommandList::IASetVertexBuffer(uint32_t slot, const std::shared_ptr<Resource>& resource, uint64_t offset)
 {
-    decltype(auto) vertex = CastToImpl<MTResource>(resource)->GetBuffer();
+    id<MTLBuffer> vertex = CastToImpl<MTResource>(resource)->GetBuffer();
     AddAllocation(vertex);
     uint32_t index = device_.GetMaxPerStageBufferCount() - slot - 1;
     [state_->argument_tables.at(ShaderType::kVertex) setAddress:vertex.gpuAddress + offset atIndex:index];
@@ -538,8 +538,8 @@ void MTCommandList::BuildBottomLevelAS(const std::shared_ptr<Resource>& src,
         [MTL4PrimitiveAccelerationStructureDescriptor new];
     acceleration_structure_desc.geometryDescriptors = geometry_descs;
 
-    decltype(auto) mt_dst = CastToImpl<MTResource>(dst);
-    decltype(auto) mt_scratch = CastToImpl<MTResource>(scratch);
+    auto* mt_dst = CastToImpl<MTResource>(dst);
+    auto* mt_scratch = CastToImpl<MTResource>(scratch);
     AddAllocation(mt_dst->GetAccelerationStructure());
     AddAllocation(mt_scratch->GetBuffer());
 
@@ -601,18 +601,17 @@ void MTCommandList::BuildTopLevelAS(const std::shared_ptr<Resource>& src,
     acceleration_structure_desc.instanceDescriptorType = MTLAccelerationStructureInstanceDescriptorTypeIndirect;
     patch_buffers_.push_back(patched_instance_data);
 
-    decltype(auto) mt_dst = CastToImpl<MTResource>(dst);
-    decltype(auto) mt_scratch = CastToImpl<MTResource>(scratch);
-    AddAllocation(mt_dst->GetAccelerationStructure());
-    AddAllocation(mt_scratch->GetBuffer());
+    id<MTLAccelerationStructure> mt_dst = CastToImpl<MTResource>(dst)->GetAccelerationStructure();
+    id<MTLBuffer> mt_scratch = CastToImpl<MTResource>(scratch)->GetBuffer();
+    AddAllocation(mt_dst);
+    AddAllocation(mt_scratch);
 
     OpenComputeEncoder();
     AddComputeBarriers();
-    [state_->compute_encoder
-        buildAccelerationStructure:mt_dst->GetAccelerationStructure()
-                        descriptor:acceleration_structure_desc
-                     scratchBuffer:MTL4BufferRangeMake(mt_scratch->GetBuffer().gpuAddress + scratch_offset,
-                                                       mt_scratch->GetBuffer().length - scratch_offset)];
+    [state_->compute_encoder buildAccelerationStructure:mt_dst
+                                             descriptor:acceleration_structure_desc
+                                          scratchBuffer:MTL4BufferRangeMake(mt_scratch.gpuAddress + scratch_offset,
+                                                                            mt_scratch.length - scratch_offset)];
 }
 
 void MTCommandList::CopyAccelerationStructure(const std::shared_ptr<Resource>& src,
@@ -646,8 +645,8 @@ void MTCommandList::CopyBuffer(const std::shared_ptr<Resource>& src_buffer,
                                const std::vector<BufferCopyRegion>& regions)
 {
     OpenComputeEncoder();
-    decltype(auto) mt_src_buffer = CastToImpl<MTResource>(src_buffer);
-    decltype(auto) mt_dst_buffer = CastToImpl<MTResource>(dst_buffer);
+    auto* mt_src_buffer = CastToImpl<MTResource>(src_buffer);
+    auto* mt_dst_buffer = CastToImpl<MTResource>(dst_buffer);
     AddAllocation(mt_src_buffer->GetBuffer());
     AddAllocation(mt_dst_buffer->GetBuffer());
     AddComputeBarriers();
@@ -680,8 +679,8 @@ void MTCommandList::CopyBufferTextureImpl(bool buffer_src,
                                           const std::vector<BufferTextureCopyRegion>& regions)
 {
     OpenComputeEncoder();
-    decltype(auto) mt_buffer = CastToImpl<MTResource>(buffer);
-    decltype(auto) mt_texture = CastToImpl<MTResource>(texture);
+    auto* mt_buffer = CastToImpl<MTResource>(buffer);
+    auto* mt_texture = CastToImpl<MTResource>(texture);
     AddAllocation(mt_buffer->GetBuffer());
     AddAllocation(mt_texture->GetTexture());
     auto format = texture->GetFormat();
@@ -728,8 +727,8 @@ void MTCommandList::CopyTexture(const std::shared_ptr<Resource>& src_texture,
                                 const std::vector<TextureCopyRegion>& regions)
 {
     OpenComputeEncoder();
-    decltype(auto) mt_src_texture = CastToImpl<MTResource>(src_texture);
-    decltype(auto) mt_dst_texture = CastToImpl<MTResource>(dst_texture);
+    auto* mt_src_texture = CastToImpl<MTResource>(src_texture);
+    auto* mt_dst_texture = CastToImpl<MTResource>(dst_texture);
     AddAllocation(mt_src_texture->GetTexture());
     AddAllocation(mt_dst_texture->GetTexture());
     auto format = dst_texture->GetFormat();
@@ -815,7 +814,7 @@ void MTCommandList::ApplyComputeState()
 
     if (state_->need_apply_pipeline) {
         assert(state_->pipeline->GetPipelineType() == PipelineType::kCompute);
-        decltype(auto) mt_pipeline = CastToImpl<MTComputePipeline>(state_->pipeline);
+        auto* mt_pipeline = CastToImpl<MTComputePipeline>(state_->pipeline);
         [state_->compute_encoder setComputePipelineState:mt_pipeline->GetPipeline()];
     }
 }
@@ -829,7 +828,7 @@ void MTCommandList::ApplyGraphicsState()
 
     if (state_->need_apply_pipeline) {
         assert(state_->pipeline->GetPipelineType() == PipelineType::kGraphics);
-        decltype(auto) mt_pipeline = CastToImpl<MTGraphicsPipeline>(state_->pipeline);
+        auto* mt_pipeline = CastToImpl<MTGraphicsPipeline>(state_->pipeline);
         decltype(auto) rasterizer_desc = mt_pipeline->GetDesc().rasterizer_desc;
         [state_->render_encoder setRenderPipelineState:mt_pipeline->GetPipeline()];
         [state_->render_encoder setTriangleFillMode:ConvertFillMode(rasterizer_desc.fill_mode)];

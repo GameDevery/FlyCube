@@ -33,13 +33,13 @@ DXCommandQueue::DXCommandQueue(DXDevice& device, CommandListType type)
 
 void DXCommandQueue::Wait(const std::shared_ptr<Fence>& fence, uint64_t value)
 {
-    decltype(auto) dx_fence = CastToImpl<DXFence>(fence);
+    auto* dx_fence = CastToImpl<DXFence>(fence);
     CHECK_HRESULT(command_queue_->Wait(dx_fence->GetFence().Get(), value));
 }
 
 void DXCommandQueue::Signal(const std::shared_ptr<Fence>& fence, uint64_t value)
 {
-    decltype(auto) dx_fence = CastToImpl<DXFence>(fence);
+    auto* dx_fence = CastToImpl<DXFence>(fence);
     CHECK_HRESULT(command_queue_->Signal(dx_fence->GetFence().Get(), value));
 }
 
@@ -50,7 +50,7 @@ void DXCommandQueue::ExecuteCommandLists(const std::vector<std::shared_ptr<Comma
         if (!command_list) {
             continue;
         }
-        decltype(auto) dx_command_list = CastToImpl<DXCommandList>(command_list);
+        auto* dx_command_list = CastToImpl<DXCommandList>(command_list);
         dx_command_lists.emplace_back(dx_command_list->GetCommandList().Get());
     }
     if (!dx_command_lists.empty()) {

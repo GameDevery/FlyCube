@@ -138,7 +138,7 @@ void DXTexture::BindMemory(const std::shared_ptr<Memory>& memory, uint64_t offse
         p_clear_value = &clear_value.value();
     }
 
-    decltype(auto) dx_memory = CastToImpl<DXMemory>(memory);
+    auto* dx_memory = CastToImpl<DXMemory>(memory);
     device_.GetDevice()->CreatePlacedResource(dx_memory->GetHeap().Get(), offset, &resource_desc_,
                                               ConvertState(GetInitialState()), p_clear_value, IID_PPV_ARGS(&resource_));
 }

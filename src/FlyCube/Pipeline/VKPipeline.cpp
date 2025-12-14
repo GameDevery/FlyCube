@@ -46,7 +46,7 @@ VKPipeline::VKPipeline(VKDevice& device,
                        const std::shared_ptr<BindingSetLayout>& layout)
     : device_(device)
 {
-    decltype(auto) vk_layout = CastToImpl<VKBindingSetLayout>(layout);
+    auto* vk_layout = CastToImpl<VKBindingSetLayout>(layout);
     pipeline_layout_ = vk_layout->GetPipelineLayout();
 
     for (const auto& shader : shaders) {

@@ -15,7 +15,7 @@ DXRayTracingPipeline::DXRayTracingPipeline(DXDevice& device, const RayTracingPip
     : device_(device)
     , desc_(desc)
 {
-    decltype(auto) dx_layout = CastToImpl<DXBindingSetLayout>(desc_.layout);
+    auto* dx_layout = CastToImpl<DXBindingSetLayout>(desc_.layout);
     root_signature_ = dx_layout->GetRootSignature();
 
     CD3DX12_STATE_OBJECT_DESC subobjects(D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE);

@@ -72,7 +72,7 @@ void DXBuffer::BindMemory(const std::shared_ptr<Memory>& memory, uint64_t offset
         SetInitialState(ResourceState::kGenericRead);
     }
 
-    decltype(auto) dx_memory = CastToImpl<DXMemory>(memory);
+    auto* dx_memory = CastToImpl<DXMemory>(memory);
     device_.GetDevice()->CreatePlacedResource(dx_memory->GetHeap().Get(), offset, &resource_desc_,
                                               ConvertState(GetInitialState()), nullptr, IID_PPV_ARGS(&resource_));
 }
