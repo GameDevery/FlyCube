@@ -136,10 +136,14 @@ private:
     ComPtr<ID3D12GraphicsCommandList4> command_list4_;
     ComPtr<ID3D12GraphicsCommandList5> command_list5_;
     ComPtr<ID3D12GraphicsCommandList6> command_list6_;
-    bool closed_ = false;
     std::vector<ComPtr<ID3D12DescriptorHeap>> heaps_;
-    std::shared_ptr<DXPipeline> pipeline_;
-    std::shared_ptr<BindingSet> binding_set_;
-    std::map<uint32_t, std::pair<std::shared_ptr<Resource>, uint64_t>> lazy_vertex_;
-    std::shared_ptr<View> shading_rate_image_view_;
+
+    struct State {
+        std::shared_ptr<DXPipeline> pipeline;
+        std::shared_ptr<BindingSet> binding_set;
+        std::map<uint32_t, std::pair<std::shared_ptr<Resource>, uint64_t>> lazy_vertex;
+        std::shared_ptr<View> shading_rate_image_view;
+    };
+
+    std::unique_ptr<State> state_;
 };
