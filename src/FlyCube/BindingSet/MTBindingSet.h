@@ -18,7 +18,7 @@ public:
     void WriteBindings(const WriteBindingsDesc& desc) override;
 
     void Apply(const std::map<ShaderType, id<MTL4ArgumentTable>>& argument_tables,
-               const std::shared_ptr<Pipeline>& state,
+               const std::shared_ptr<Pipeline>& pipeline,
                id<MTLResidencySet> residency_set);
 
 private:

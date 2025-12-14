@@ -15,7 +15,7 @@ public:
     MTCommandList(MTDevice& device, CommandListType type);
     void Reset() override;
     void Close() override;
-    void BindPipeline(const std::shared_ptr<Pipeline>& state) override;
+    void BindPipeline(const std::shared_ptr<Pipeline>& pipeline) override;
     void BindBindingSet(const std::shared_ptr<BindingSet>& binding_set) override;
     void BeginRenderPass(const RenderPassDesc& render_pass_desc) override;
     void EndRenderPass() override;
@@ -133,12 +133,12 @@ private:
     float max_depth_bounds_ = 1.0;
     uint32_t stencil_reference_ = 0;
     std::optional<std::array<float, 4>> blend_constants_;
-    std::shared_ptr<Pipeline> state_;
+    std::shared_ptr<Pipeline> pipeline_;
     std::shared_ptr<MTBindingSet> binding_set_;
     std::map<ShaderType, id<MTL4ArgumentTable>> argument_tables_;
     id<MTLResidencySet> residency_set_ = nullptr;
     std::vector<id<MTLBuffer>> patch_buffers_;
-    bool need_apply_state_ = false;
+    bool need_apply_pipeline_ = false;
     bool need_apply_binding_set_ = false;
     MTLStages render_barrier_after_stages_ = 0;
     MTLStages render_barrier_before_stages_ = 0;

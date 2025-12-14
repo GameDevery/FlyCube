@@ -191,13 +191,13 @@ void MTCommandList::Close()
     max_depth_bounds_ = 1.0;
     stencil_reference_ = 0;
     blend_constants_ = std::nullopt;
-    state_.reset();
+    pipeline_.reset();
     binding_set_.reset();
     argument_tables_ = {};
     [residency_set_ commit];
     residency_set_ = nullptr;
     patch_buffers_.clear();
-    need_apply_state_ = false;
+    need_apply_pipeline_ = false;
     need_apply_binding_set_ = false;
     render_barrier_after_stages_ = 0;
     render_barrier_before_stages_ = 0;
@@ -206,10 +206,10 @@ void MTCommandList::Close()
     closed_ = true;
 }
 
-void MTCommandList::BindPipeline(const std::shared_ptr<Pipeline>& state)
+void MTCommandList::BindPipeline(const std::shared_ptr<Pipeline>& pipeline)
 {
-    state_ = state;
-    need_apply_state_ = true;
+    pipeline_ = pipeline;
+    need_apply_pipeline_ = true;
     need_apply_binding_set_ = true;
 }
 
@@ -299,7 +299,7 @@ void MTCommandList::BeginRenderPass(const RenderPassDesc& render_pass_desc)
     [render_encoder_ setArgumentTable:argument_tables_.at(ShaderType::kAmplification) atStages:MTLRenderStageObject];
     [render_encoder_ setArgumentTable:argument_tables_.at(ShaderType::kMesh) atStages:MTLRenderStageMesh];
 
-    need_apply_state_ = true;
+    need_apply_pipeline_ = true;
 }
 
 void MTCommandList::EndRenderPass()
@@ -388,26 +388,26 @@ void MTCommandList::Dispatch(uint32_t thread_group_count_x,
                              uint32_t thread_group_count_y,
                              uint32_t thread_group_count_z)
 {
-    decltype(auto) mt_state = state_->As<MTComputePipeline>();
+    decltype(auto) mt_pipeline = pipeline_->As<MTComputePipeline>();
     MTLSize threadgroups_per_grid = { thread_group_count_x, thread_group_count_y, thread_group_count_z };
 
     OpenComputeEncoder();
     ApplyComputeState();
     AddComputeBarriers();
-    [compute_encoder_ dispatchThreadgroups:threadgroups_per_grid threadsPerThreadgroup:mt_state.GetNumthreads()];
+    [compute_encoder_ dispatchThreadgroups:threadgroups_per_grid threadsPerThreadgroup:mt_pipeline.GetNumthreads()];
 }
 
 void MTCommandList::DispatchIndirect(const std::shared_ptr<Resource>& argument_buffer, uint64_t argument_buffer_offset)
 {
     decltype(auto) mt_argument_buffer = argument_buffer->As<MTResource>().GetBuffer();
-    decltype(auto) mt_state = state_->As<MTComputePipeline>();
+    decltype(auto) mt_pipeline = pipeline_->As<MTComputePipeline>();
     AddAllocation(mt_argument_buffer);
 
     OpenComputeEncoder();
     ApplyComputeState();
     AddComputeBarriers();
     [compute_encoder_ dispatchThreadgroupsWithIndirectBuffer:mt_argument_buffer.gpuAddress + argument_buffer_offset
-                                       threadsPerThreadgroup:mt_state.GetNumthreads()];
+                                       threadsPerThreadgroup:mt_pipeline.GetNumthreads()];
 }
 
 void MTCommandList::DispatchMesh(uint32_t thread_group_count_x,
@@ -415,10 +415,10 @@ void MTCommandList::DispatchMesh(uint32_t thread_group_count_x,
                                  uint32_t thread_group_count_z)
 {
     ApplyGraphicsState();
-    decltype(auto) mt_state = state_->As<MTGraphicsPipeline>();
+    decltype(auto) mt_pipeline = pipeline_->As<MTGraphicsPipeline>();
     [render_encoder_ drawMeshThreadgroups:MTLSizeMake(thread_group_count_x, thread_group_count_y, thread_group_count_z)
-              threadsPerObjectThreadgroup:mt_state.GetAmplificationNumthreads()
-                threadsPerMeshThreadgroup:mt_state.GetMeshNumthreads()];
+              threadsPerObjectThreadgroup:mt_pipeline.GetAmplificationNumthreads()
+                threadsPerMeshThreadgroup:mt_pipeline.GetMeshNumthreads()];
 }
 
 void MTCommandList::DispatchRays(const RayTracingShaderTables& shader_tables,
@@ -823,29 +823,29 @@ id<MTL4CommandBuffer> MTCommandList::GetCommandBuffer()
 void MTCommandList::ApplyComputeState()
 {
     if (need_apply_binding_set_ && binding_set_) {
-        binding_set_->Apply(argument_tables_, state_, residency_set_);
+        binding_set_->Apply(argument_tables_, pipeline_, residency_set_);
         need_apply_binding_set_ = false;
     }
 
-    if (need_apply_state_) {
-        assert(state_->GetPipelineType() == PipelineType::kCompute);
-        decltype(auto) mt_state = state_->As<MTComputePipeline>();
-        [compute_encoder_ setComputePipelineState:mt_state.GetPipeline()];
+    if (need_apply_pipeline_) {
+        assert(pipeline_->GetPipelineType() == PipelineType::kCompute);
+        decltype(auto) mt_pipeline = pipeline_->As<MTComputePipeline>();
+        [compute_encoder_ setComputePipelineState:mt_pipeline.GetPipeline()];
     }
 }
 
 void MTCommandList::ApplyGraphicsState()
 {
     if (need_apply_binding_set_ && binding_set_) {
-        binding_set_->Apply(argument_tables_, state_, residency_set_);
+        binding_set_->Apply(argument_tables_, pipeline_, residency_set_);
         need_apply_binding_set_ = false;
     }
 
-    if (need_apply_state_) {
-        assert(state_->GetPipelineType() == PipelineType::kGraphics);
-        decltype(auto) mt_state = state_->As<MTGraphicsPipeline>();
-        decltype(auto) rasterizer_desc = mt_state.GetDesc().rasterizer_desc;
-        [render_encoder_ setRenderPipelineState:mt_state.GetPipeline()];
+    if (need_apply_pipeline_) {
+        assert(pipeline_->GetPipelineType() == PipelineType::kGraphics);
+        decltype(auto) mt_pipeline = pipeline_->As<MTGraphicsPipeline>();
+        decltype(auto) rasterizer_desc = mt_pipeline.GetDesc().rasterizer_desc;
+        [render_encoder_ setRenderPipelineState:mt_pipeline.GetPipeline()];
         [render_encoder_ setTriangleFillMode:ConvertFillMode(rasterizer_desc.fill_mode)];
         [render_encoder_ setCullMode:ConvertCullMode(rasterizer_desc.cull_mode)];
         [render_encoder_ setFrontFacingWinding:ConvertFrontFace(rasterizer_desc.front_face)];
@@ -854,8 +854,8 @@ void MTCommandList::ApplyGraphicsState()
                                 clamp:rasterizer_desc.depth_bias_clamp];
         [render_encoder_
             setDepthClipMode:rasterizer_desc.depth_clip_enable ? MTLDepthClipModeClip : MTLDepthClipModeClamp];
-        [render_encoder_ setDepthStencilState:mt_state.GetDepthStencil()];
-        need_apply_state_ = false;
+        [render_encoder_ setDepthStencilState:mt_pipeline.GetDepthStencil()];
+        need_apply_pipeline_ = false;
     }
 
     AddGraphicsBarriers();
@@ -906,7 +906,7 @@ void MTCommandList::OpenComputeEncoder()
     assert(!render_encoder_);
     compute_encoder_ = [command_buffer_ computeCommandEncoder];
     [compute_encoder_ setArgumentTable:argument_tables_.at(ShaderType::kCompute)];
-    need_apply_state_ = true;
+    need_apply_pipeline_ = true;
 }
 
 void MTCommandList::CloseComputeEncoder()

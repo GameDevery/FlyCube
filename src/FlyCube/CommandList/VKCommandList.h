@@ -11,7 +11,7 @@ public:
     VKCommandList(VKDevice& device, CommandListType type);
     void Reset() override;
     void Close() override;
-    void BindPipeline(const std::shared_ptr<Pipeline>& state) override;
+    void BindPipeline(const std::shared_ptr<Pipeline>& pipeline) override;
     void BindBindingSet(const std::shared_ptr<BindingSet>& binding_set) override;
     void BeginRenderPass(const RenderPassDesc& render_pass_desc) override;
     void EndRenderPass() override;
@@ -114,6 +114,6 @@ private:
     VKDevice& device_;
     vk::UniqueCommandBuffer command_list_;
     bool closed_ = false;
-    std::shared_ptr<VKPipeline> state_;
+    std::shared_ptr<VKPipeline> pipeline_;
     std::shared_ptr<BindingSet> binding_set_;
 };

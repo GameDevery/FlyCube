@@ -25,9 +25,9 @@ public:
         ApplyAndRecord(&T::Close);
     }
 
-    void BindPipeline(const std::shared_ptr<Pipeline>& state) override
+    void BindPipeline(const std::shared_ptr<Pipeline>& pipeline) override
     {
-        ApplyAndRecord(&T::BindPipeline, state);
+        ApplyAndRecord(&T::BindPipeline, pipeline);
     }
 
     void BindBindingSet(const std::shared_ptr<BindingSet>& binding_set) override

@@ -20,7 +20,7 @@ public:
     DXCommandList(DXDevice& device, CommandListType type);
     void Reset() override;
     void Close() override;
-    void BindPipeline(const std::shared_ptr<Pipeline>& state) override;
+    void BindPipeline(const std::shared_ptr<Pipeline>& pipeline) override;
     void BindBindingSet(const std::shared_ptr<BindingSet>& binding_set) override;
     void BeginRenderPass(const RenderPassDesc& render_pass_desc) override;
     void EndRenderPass() override;
@@ -138,7 +138,7 @@ private:
     ComPtr<ID3D12GraphicsCommandList6> command_list6_;
     bool closed_ = false;
     std::vector<ComPtr<ID3D12DescriptorHeap>> heaps_;
-    std::shared_ptr<DXPipeline> state_;
+    std::shared_ptr<DXPipeline> pipeline_;
     std::shared_ptr<BindingSet> binding_set_;
     std::map<uint32_t, std::pair<std::shared_ptr<Resource>, uint64_t>> lazy_vertex_;
     std::shared_ptr<View> shading_rate_image_view_;

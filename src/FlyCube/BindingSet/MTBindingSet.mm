@@ -88,11 +88,11 @@ void MTBindingSet::WriteBindings(const WriteBindingsDesc& desc)
 }
 
 void MTBindingSet::Apply(const std::map<ShaderType, id<MTL4ArgumentTable>>& argument_tables,
-                         const std::shared_ptr<Pipeline>& state,
+                         const std::shared_ptr<Pipeline>& pipeline,
                          id<MTLResidencySet> residency_set)
 {
     for (const auto& [bind_key, view] : direct_bindings_) {
-        decltype(auto) shader = state->As<MTPipeline>().GetShader(bind_key.shader_type);
+        decltype(auto) shader = pipeline->As<MTPipeline>().GetShader(bind_key.shader_type);
         uint32_t index = shader->As<MTShader>().GetIndex(bind_key);
         SetView(argument_tables.at(bind_key.shader_type), std::static_pointer_cast<MTView>(view), index);
         if (view) {
@@ -109,7 +109,7 @@ void MTBindingSet::Apply(const std::map<ShaderType, id<MTL4ArgumentTable>>& argu
 
     id<MTLBuffer> buffer = device_.GetBindlessArgumentBuffer().GetArgumentBuffer();
     for (const auto& bind_key : bindless_bind_keys_) {
-        decltype(auto) shader = state->As<MTPipeline>().GetShader(bind_key.shader_type);
+        decltype(auto) shader = pipeline->As<MTPipeline>().GetShader(bind_key.shader_type);
         uint32_t index = shader->As<MTShader>().GetIndex(bind_key);
         SetBuffer(argument_tables.at(bind_key.shader_type), buffer, 0, index);
     }

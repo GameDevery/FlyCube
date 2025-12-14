@@ -92,7 +92,7 @@ void DXCommandList::Reset()
     CHECK_HRESULT(command_list_->Reset(command_allocator_.Get(), nullptr));
     closed_ = false;
     heaps_.clear();
-    state_.reset();
+    pipeline_.reset();
     binding_set_.reset();
     lazy_vertex_.clear();
     shading_rate_image_view_.reset();
@@ -106,20 +106,20 @@ void DXCommandList::Close()
     }
 }
 
-void DXCommandList::BindPipeline(const std::shared_ptr<Pipeline>& state)
+void DXCommandList::BindPipeline(const std::shared_ptr<Pipeline>& pipeline)
 {
-    if (state == state_) {
+    if (pipeline == pipeline_) {
         return;
     }
-    state_ = std::static_pointer_cast<DXPipeline>(state);
-    command_list_->SetComputeRootSignature(state_->GetRootSignature().Get());
-    auto type = state_->GetPipelineType();
+    pipeline_ = std::static_pointer_cast<DXPipeline>(pipeline);
+    command_list_->SetComputeRootSignature(pipeline_->GetRootSignature().Get());
+    auto type = pipeline_->GetPipelineType();
     if (type == PipelineType::kGraphics) {
-        decltype(auto) dx_state = state->As<DXGraphicsPipeline>();
+        decltype(auto) dx_pipeline = pipeline_->As<DXGraphicsPipeline>();
         command_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        command_list_->SetGraphicsRootSignature(dx_state.GetRootSignature().Get());
-        command_list_->SetPipelineState(dx_state.GetPipeline().Get());
-        for (const auto& [slot, stride] : dx_state.GetStrideMap()) {
+        command_list_->SetGraphicsRootSignature(dx_pipeline.GetRootSignature().Get());
+        command_list_->SetPipelineState(dx_pipeline.GetPipeline().Get());
+        for (const auto& [slot, stride] : dx_pipeline.GetStrideMap()) {
             auto it = lazy_vertex_.find(slot);
             if (it != lazy_vertex_.end()) {
                 const auto& [resource, offset] = it->second;
@@ -129,11 +129,11 @@ void DXCommandList::BindPipeline(const std::shared_ptr<Pipeline>& state)
             }
         }
     } else if (type == PipelineType::kCompute) {
-        decltype(auto) dx_state = state->As<DXComputePipeline>();
-        command_list_->SetPipelineState(dx_state.GetPipeline().Get());
+        decltype(auto) dx_pipeline = pipeline->As<DXComputePipeline>();
+        command_list_->SetPipelineState(dx_pipeline.GetPipeline().Get());
     } else if (type == PipelineType::kRayTracing) {
-        decltype(auto) dx_state = state->As<DXRayTracingPipeline>();
-        command_list4_->SetPipelineState1(dx_state.GetPipeline().Get());
+        decltype(auto) dx_pipeline = pipeline->As<DXRayTracingPipeline>();
+        command_list4_->SetPipelineState1(dx_pipeline.GetPipeline().Get());
     }
 }
 
@@ -433,9 +433,9 @@ void DXCommandList::IASetIndexBuffer(const std::shared_ptr<Resource>& resource, 
 
 void DXCommandList::IASetVertexBuffer(uint32_t slot, const std::shared_ptr<Resource>& resource, uint64_t offset)
 {
-    if (state_ && state_->GetPipelineType() == PipelineType::kGraphics) {
-        decltype(auto) dx_state = state_->As<DXGraphicsPipeline>();
-        auto& strides = dx_state.GetStrideMap();
+    if (pipeline_ && pipeline_->GetPipelineType() == PipelineType::kGraphics) {
+        decltype(auto) dx_pipeline = pipeline_->As<DXGraphicsPipeline>();
+        auto& strides = dx_pipeline.GetStrideMap();
         auto it = strides.find(slot);
         if (it != strides.end()) {
             IASetVertexBufferImpl(slot, resource, offset, it->second);
