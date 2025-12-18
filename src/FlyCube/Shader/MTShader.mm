@@ -13,8 +13,8 @@ MTShader::MTShader(MTDevice& device, const std::vector<uint8_t>& blob, ShaderBlo
     : ShaderBase(blob, blob_type, shader_type)
 {
 #if defined(USE_METAL_SHADER_CONVERTER)
-    std::string entry_point = "main";
-    auto metal_lib_bytecode = ConvertToMetalLibBytecode(shader_type, blob);
+    std::string entry_point;
+    auto metal_lib_bytecode = ConvertToMetalLibBytecode(shader_type, blob, entry_point);
     dispatch_data_t metal_lib_data = dispatch_data_create(metal_lib_bytecode.data(), metal_lib_bytecode.size(), nullptr,
                                                           DISPATCH_DATA_DESTRUCTOR_DEFAULT);
     NSError* error = nullptr;

@@ -29,7 +29,9 @@ IRShaderStage GetShaderStage(ShaderType type)
 
 } // namespace
 
-std::vector<uint8_t> ConvertToMetalLibBytecode(ShaderType shader_type, const std::vector<uint8_t>& blob)
+std::vector<uint8_t> ConvertToMetalLibBytecode(ShaderType shader_type,
+                                               const std::vector<uint8_t>& blob,
+                                               std::string& entry_point)
 {
     IRCompiler* compiler = IRCompilerCreate();
     IRObject* dxil_obj = IRObjectCreateFromDXIL(blob.data(), blob.size(), IRBytecodeOwnershipNone);
@@ -55,6 +57,11 @@ std::vector<uint8_t> ConvertToMetalLibBytecode(ShaderType shader_type, const std
     std::vector<uint8_t> metal_lib_bytecode(metal_lib_size);
     IRMetalLibGetBytecode(metal_lib, metal_lib_bytecode.data());
 
+    IRShaderReflection* reflection = IRShaderReflectionCreate();
+    IRObjectGetReflection(metal_ir, GetShaderStage(shader_type), reflection);
+    entry_point = IRShaderReflectionGetEntryPointFunctionName(reflection);
+
+    IRShaderReflectionDestroy(reflection);
     IRMetalLibBinaryDestroy(metal_lib);
     IRObjectDestroy(metal_ir);
     IRObjectDestroy(dxil_obj);
