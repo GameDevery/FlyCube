@@ -6,6 +6,7 @@
 namespace {
 
 constexpr uint32_t kFrameCount = 3;
+constexpr bool kUsePixelShaderNoBindings = false;
 
 } // namespace
 
@@ -73,32 +74,41 @@ TriangleRenderer::TriangleRenderer(const Settings& settings)
         { .size = sizeof(vertex_data.front()) * vertex_data.size(), .usage = BindFlag::kVertexBuffer });
     vertex_buffer_->UpdateUploadBuffer(0, vertex_data.data(), sizeof(vertex_data.front()) * vertex_data.size());
 
-    glm::vec4 constant_data = glm::vec4(1.0, 0.0, 0.0, 1.0);
-    constant_buffer_ = device_->CreateBuffer(MemoryType::kUpload,
-                                             { .size = sizeof(constant_data), .usage = BindFlag::kConstantBuffer });
-    constant_buffer_->UpdateUploadBuffer(0, &constant_data, sizeof(constant_data));
-    ViewDesc constant_buffer_view_desc = {
-        .view_type = ViewType::kConstantBuffer,
-        .dimension = ViewDimension::kBuffer,
-    };
-    constant_buffer_view_ = device_->CreateView(constant_buffer_, constant_buffer_view_desc);
+    if (!kUsePixelShaderNoBindings) {
+        glm::vec4 constant_data = glm::vec4(1.0, 0.0, 0.0, 1.0);
+        constant_buffer_ = device_->CreateBuffer(MemoryType::kUpload,
+                                                 { .size = sizeof(constant_data), .usage = BindFlag::kConstantBuffer });
+        constant_buffer_->UpdateUploadBuffer(0, &constant_data, sizeof(constant_data));
+        ViewDesc constant_buffer_view_desc = {
+            .view_type = ViewType::kConstantBuffer,
+            .dimension = ViewDimension::kBuffer,
+        };
+        constant_buffer_view_ = device_->CreateView(constant_buffer_, constant_buffer_view_desc);
+    }
 
     ShaderBlobType blob_type = device_->GetSupportedShaderBlobType();
     std::vector<uint8_t> vertex_blob = AssetLoadShaderBlob("assets/Triangle/VertexShader.hlsl", blob_type);
-    std::vector<uint8_t> pixel_blob = AssetLoadShaderBlob("assets/Triangle/PixelShader.hlsl", blob_type);
+    std::vector<uint8_t> pixel_blob = AssetLoadShaderBlob(
+        kUsePixelShaderNoBindings ? "assets/Triangle/PixelShaderNoBindings.hlsl" : "assets/Triangle/PixelShader.hlsl",
+        blob_type);
     vertex_shader_ = device_->CreateShader(vertex_blob, blob_type, ShaderType::kVertex);
     pixel_shader_ = device_->CreateShader(pixel_blob, blob_type, ShaderType::kPixel);
 
-    BindKey constant_buffer_key = {
-        .shader_type = ShaderType::kPixel,
-        .view_type = ViewType::kConstantBuffer,
-        .slot = 0,
-        .space = 0,
-        .count = 1,
-    };
-    layout_ = device_->CreateBindingSetLayout({ .bind_keys = { constant_buffer_key } });
-    binding_set_ = device_->CreateBindingSet(layout_);
-    binding_set_->WriteBindings({ .bindings = { { constant_buffer_key, constant_buffer_view_ } } });
+    if (kUsePixelShaderNoBindings) {
+        layout_ = device_->CreateBindingSetLayout({});
+        binding_set_ = device_->CreateBindingSet(layout_);
+    } else {
+        BindKey constant_buffer_key = {
+            .shader_type = ShaderType::kPixel,
+            .view_type = ViewType::kConstantBuffer,
+            .slot = 0,
+            .space = 0,
+            .count = 1,
+        };
+        layout_ = device_->CreateBindingSetLayout({ .bind_keys = { constant_buffer_key } });
+        binding_set_ = device_->CreateBindingSet(layout_);
+        binding_set_->WriteBindings({ .bindings = { { constant_buffer_key, constant_buffer_view_ } } });
+    }
 }
 
 TriangleRenderer::~TriangleRenderer()
