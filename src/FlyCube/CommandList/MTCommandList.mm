@@ -11,6 +11,10 @@
 #include "Utilities/NotReached.h"
 #include "View/MTView.h"
 
+#if defined(USE_METAL_SHADER_CONVERTER)
+#include <metal_irconverter_runtime.h>
+#endif
+
 namespace {
 
 MTLIndexType ConvertIndexType(gli::format format)
@@ -472,7 +476,11 @@ void MTCommandList::IASetVertexBuffer(uint32_t slot, const std::shared_ptr<Resou
 {
     id<MTLBuffer> vertex = CastToImpl<MTResource>(resource)->GetBuffer();
     AddAllocation(vertex);
+#if defined(USE_METAL_SHADER_CONVERTER)
+    uint32_t index = kIRVertexBufferBindPoint + slot;
+#else
     uint32_t index = device_.GetMaxPerStageBufferCount() - slot - 1;
+#endif
     [state_->argument_tables.at(ShaderType::kVertex) setAddress:vertex.gpuAddress + offset atIndex:index];
 }
 

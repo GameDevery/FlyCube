@@ -1,12 +1,28 @@
 #include "Shader/MTShader.h"
 
 #include "Device/MTDevice.h"
-#include "HLSLCompiler/MSLConverter.h"
 #include "Utilities/Logging.h"
+
+#if defined(USE_METAL_SHADER_CONVERTER)
+#include "HLSLCompiler/MetalShaderConverter.h"
+#else
+#include "HLSLCompiler/MSLConverter.h"
+#endif
 
 MTShader::MTShader(MTDevice& device, const std::vector<uint8_t>& blob, ShaderBlobType blob_type, ShaderType shader_type)
     : ShaderBase(blob, blob_type, shader_type)
 {
+#if defined(USE_METAL_SHADER_CONVERTER)
+    std::string entry_point = "main";
+    auto metal_lib_bytecode = ConvertToMetalLibBytecode(shader_type, blob);
+    dispatch_data_t metal_lib_data = dispatch_data_create(metal_lib_bytecode.data(), metal_lib_bytecode.size(), nullptr,
+                                                          DISPATCH_DATA_DESTRUCTOR_DEFAULT);
+    NSError* error = nullptr;
+    id<MTLLibrary> library = [device.GetDevice() newLibraryWithData:metal_lib_data error:&error];
+    if (library == nullptr) {
+        Logging::Println("Failed to create MTLLibrary: {}", error);
+    }
+#else
     std::string entry_point;
     std::string msl_source = GetMSLShader(shader_type, blob_, slot_remapping_, entry_point);
 
@@ -17,6 +33,7 @@ MTShader::MTShader(MTDevice& device, const std::vector<uint8_t>& blob, ShaderBlo
     if (!library) {
         Logging::Println("Failed to create MTLLibrary: {}", error);
     }
+#endif
 
     function_descriptor_ = [MTL4LibraryFunctionDescriptor new];
     function_descriptor_.library = library;

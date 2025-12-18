@@ -7,6 +7,10 @@
 #include "Utilities/Logging.h"
 #include "Utilities/NotReached.h"
 
+#if defined(USE_METAL_SHADER_CONVERTER)
+#include <metal_irconverter_runtime.h>
+#endif
+
 namespace {
 
 MTLStencilOperation ConvertStencilOperation(StencilOp op)
@@ -245,13 +249,21 @@ MTLVertexDescriptor* MTGraphicsPipeline::GetVertexDescriptor(const std::shared_p
             CHECK(input_layout_stride[vertex.slot] == vertex.stride);
         }
 
+#if defined(USE_METAL_SHADER_CONVERTER)
+        const uint32_t buffer_index = kIRVertexBufferBindPoint + vertex.slot;
+#else
         const uint32_t buffer_index = device_.GetMaxPerStageBufferCount() - vertex.slot - 1;
+#endif
         MTLVertexBufferLayoutDescriptor* layout = vertex_descriptor.layouts[buffer_index];
         layout.stride = vertex.stride;
         layout.stepFunction = MTLVertexStepFunctionPerVertex;
         layout.stepRate = 1;
 
+#if defined(USE_METAL_SHADER_CONVERTER)
+        const uint32_t location = kIRStageInAttributeStartIndex + shader->GetInputLayoutLocation(vertex.semantic_name);
+#else
         const uint32_t location = shader->GetInputLayoutLocation(vertex.semantic_name);
+#endif
         MTLVertexAttributeDescriptor* attribute = vertex_descriptor.attributes[location];
         attribute.offset = vertex.offset;
         attribute.bufferIndex = buffer_index;

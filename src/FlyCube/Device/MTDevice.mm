@@ -25,6 +25,16 @@
 
 #include <type_traits>
 
+namespace {
+
+#if defined(USE_METAL_SHADER_CONVERTER)
+constexpr ShaderBlobType kShaderBlobType = ShaderBlobType::kDXIL;
+#else
+constexpr ShaderBlobType kShaderBlobType = ShaderBlobType::kSPIRV;
+#endif
+
+} // namespace
+
 MTLCompareFunction ConvertToCompareFunction(ComparisonFunc func)
 {
     switch (func) {
@@ -183,7 +193,7 @@ std::shared_ptr<Shader> MTDevice::CreateShader(const std::vector<uint8_t>& blob,
 
 std::shared_ptr<Shader> MTDevice::CompileShader(const ShaderDesc& desc)
 {
-    return std::make_shared<MTShader>(*this, Compile(desc, ShaderBlobType::kSPIRV), ShaderBlobType::kSPIRV, desc.type);
+    return std::make_shared<MTShader>(*this, Compile(desc, kShaderBlobType), kShaderBlobType, desc.type);
 }
 
 std::shared_ptr<Pipeline> MTDevice::CreateGraphicsPipeline(const GraphicsPipelineDesc& desc)
@@ -351,7 +361,7 @@ RaytracingASPrebuildInfo MTDevice::GetTLASPrebuildInfo(uint32_t instance_count,
 
 ShaderBlobType MTDevice::GetSupportedShaderBlobType() const
 {
-    return ShaderBlobType::kSPIRV;
+    return kShaderBlobType;
 }
 
 uint64_t MTDevice::GetConstantBufferOffsetAlignment() const

@@ -114,8 +114,11 @@ list(APPEND GPUDescriptorPool
 )
 
 list(APPEND HLSLCompiler
-    HLSLCompiler/Compiler.h
+    $<$<BOOL:${USE_METAL_SHADER_CONVERTER}>:HLSLCompiler/MetalIrConverterImpl.mm>
+    $<$<BOOL:${USE_METAL_SHADER_CONVERTER}>:HLSLCompiler/MetalShaderConverter.cpp>
+    $<$<BOOL:${USE_METAL_SHADER_CONVERTER}>:HLSLCompiler/MetalShaderConverter.h>
     HLSLCompiler/Compiler.cpp
+    HLSLCompiler/Compiler.h
     HLSLCompiler/DXCLoader.cpp
     HLSLCompiler/DXCLoader.h
     HLSLCompiler/MSLConverter.cpp
@@ -312,13 +315,14 @@ add_library(FlyCube
 )
 
 target_link_libraries(FlyCube
-    $<$<BOOL:${APPLE}>:-framework\ Foundation>
-    $<$<BOOL:${APPLE}>:-framework\ QuartzCore>
     $<$<AND:$<BOOL:${DIRECTX_SUPPORT}>,$<PLATFORM_ID:Windows>>:d3d12>
     $<$<AND:$<BOOL:${DIRECTX_SUPPORT}>,$<PLATFORM_ID:Windows>>:dxgi>
     $<$<AND:$<BOOL:${DIRECTX_SUPPORT}>,$<PLATFORM_ID:Windows>>:dxguid>
+    $<$<BOOL:${APPLE}>:-framework\ Foundation>
+    $<$<BOOL:${APPLE}>:-framework\ QuartzCore>
     $<$<BOOL:${METAL_SUPPORT}>:-framework\ Metal>
     $<$<BOOL:${METAL_SUPPORT}>:MVKPixelFormats>
+    $<$<BOOL:${USE_METAL_SHADER_CONVERTER}>:/usr/local/lib/libmetalirconverter.dylib>
     $<$<BOOL:${VULKAN_SUPPORT}>:vulkan>
     DirectX-Headers
     dxc
@@ -332,6 +336,8 @@ target_link_libraries(FlyCube
 target_include_directories(FlyCube
     PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}"
+        $<$<BOOL:${USE_METAL_SHADER_CONVERTER}>:/usr/local/include/metal_irconverter_runtime>
+        $<$<BOOL:${USE_METAL_SHADER_CONVERTER}>:/usr/local/include/metal_irconverter>
 )
 
 if (APPLE)
