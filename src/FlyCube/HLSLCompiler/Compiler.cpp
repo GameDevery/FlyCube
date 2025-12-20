@@ -101,7 +101,6 @@ std::vector<uint8_t> Compile(const ShaderDesc& shader, ShaderBlobType blob_type)
     arguments.push_back(L"/Zi");
     arguments.push_back(L"/Qembed_debug");
     arguments.push_back(L"-Werror");
-    uint32_t space = 0;
     if (blob_type == ShaderBlobType::kSPIRV) {
         arguments.emplace_back(L"-spirv");
         arguments.emplace_back(L"-fspv-target-env=vulkan1.2");
@@ -113,9 +112,9 @@ std::vector<uint8_t> Compile(const ShaderDesc& shader, ShaderBlobType blob_type)
         arguments.emplace_back(L"-fspv-extension=SPV_GOOGLE_user_type");
         arguments.emplace_back(L"-fvk-use-dx-layout");
         arguments.emplace_back(L"-fspv-reflect");
-        space = static_cast<uint32_t>(shader.type);
     }
 
+    uint32_t space = static_cast<uint32_t>(shader.type);
     arguments.emplace_back(L"-auto-binding-space");
     dynamic_arguments.emplace_back(std::to_wstring(space));
     arguments.emplace_back(dynamic_arguments.back().c_str());
