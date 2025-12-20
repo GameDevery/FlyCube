@@ -1,11 +1,14 @@
 #include "HLSLCompiler/MetalShaderConverter.h"
 
 #include "ShaderReflection/ShaderReflection.h"
+#include "Utilities/Check.h"
 #include "Utilities/Logging.h"
 #include "Utilities/NotReached.h"
 
 #include <metal_irconverter.h>
 
+#include <algorithm>
+#include <cctype>
 #include <span>
 
 namespace {
@@ -86,6 +89,28 @@ IRRootSignature* CreateIRRootSignature(const std::vector<BindKey>& bind_keys)
     return root_signature;
 }
 
+void ValidateVertexInputs(const std::shared_ptr<ShaderReflection>& dxil_reflection, IRShaderReflection* reflection)
+{
+    std::map<std::string, uint32_t> locations;
+    for (const auto& input_parameter : dxil_reflection->GetInputParameters()) {
+        std::string name;
+        std::ranges::transform(input_parameter.semantic_name, std::back_inserter(name), tolower);
+        if (!name.empty() && !isdigit(name.back())) {
+            name += '0';
+        }
+        locations[name] = input_parameter.location;
+    }
+
+    IRVersionedVSInfo vsinfo = {};
+    IRShaderReflectionCopyVertexInfo(reflection, IRReflectionVersion_1_0, &vsinfo);
+    for (size_t i = 0; i < vsinfo.info_1_0.num_vertex_inputs; ++i) {
+        CHECK(locations.at(vsinfo.info_1_0.vertex_inputs[i].name) == vsinfo.info_1_0.vertex_inputs[i].attributeIndex,
+              "semantic_name '{}'", vsinfo.info_1_0.vertex_inputs[i].name);
+    }
+    CHECK(!vsinfo.info_1_0.needs_draw_params);
+    IRShaderReflectionReleaseVertexInfo(&vsinfo);
+}
+
 } // namespace
 
 uint32_t GetRangeType(ViewType view_type)
@@ -157,6 +182,8 @@ std::vector<uint8_t> ConvertToMetalLibBytecode(ShaderType shader_type,
     IRShaderReflection* reflection = IRShaderReflectionCreate();
     IRObjectGetReflection(metal_ir, GetShaderStage(shader_type), reflection);
     entry_point = IRShaderReflectionGetEntryPointFunctionName(reflection);
+
+    ValidateVertexInputs(dxil_reflection, reflection);
 
     IRShaderReflectionDestroy(reflection);
     IRMetalLibBinaryDestroy(metal_lib);
