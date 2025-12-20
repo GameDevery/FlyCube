@@ -25,6 +25,8 @@ private:
     MTDevice& device_;
     std::set<BindKey> bindless_bind_keys_;
     std::map<BindKey, std::shared_ptr<View>> direct_bindings_;
+#if defined(USE_METAL_SHADER_CONVERTER)
     id<MTLBuffer> argument_buffer_;
-    std::map<uint32_t, id<MTLBuffer>> bindings_by_space_;
+    std::shared_ptr<MTBindingSetLayout> layout_;
+#endif
 };
