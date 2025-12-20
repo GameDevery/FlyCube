@@ -392,6 +392,8 @@ void DXReflection::ParseReflectionPart(const ReflectionPart& reflection_part)
         assert(bindings_.size() == layouts_.size());
         input_parameters_ = ParseInputParameters(desc, shader_reflection.Get());
         output_parameters_ = ParseOutputParameters(desc, shader_reflection.Get());
+        shader_reflection->GetThreadGroupSize(&shader_feature_info_.numthreads[0], &shader_feature_info_.numthreads[1],
+                                              &shader_feature_info_.numthreads[2]);
     } else if (reflection_part.GetLibraryReflection(static_cast<void**>(&library_reflection))) {
         is_library_ = true;
         D3D12_LIBRARY_DESC library_desc = {};

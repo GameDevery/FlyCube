@@ -17,6 +17,4 @@ private:
     void ParseDebugInfo(dxc::DxcDllSupport& dxc_support, CComPtr<IDxcBlob> pdb);
 
     ShaderKind GetVersionShaderType(uint64_t version) override;
-
-    ShaderFeatureInfo shader_feature_info_ = {};
 };

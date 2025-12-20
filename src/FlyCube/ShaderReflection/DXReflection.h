@@ -19,4 +19,5 @@ protected:
     std::vector<VariableLayout> layouts_;
     std::vector<InputParameterDesc> input_parameters_;
     std::vector<OutputParameterDesc> output_parameters_;
+    ShaderFeatureInfo shader_feature_info_ = {};
 };
