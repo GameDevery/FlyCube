@@ -25,4 +25,5 @@ private:
     MTDevice& device_;
     std::set<BindKey> bindless_bind_keys_;
     std::map<BindKey, std::shared_ptr<View>> direct_bindings_;
+    std::map<std::pair<Shader*, ShaderType>, id<MTLBuffer>> argument_buffers_;
 };

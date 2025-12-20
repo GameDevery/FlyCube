@@ -5,6 +5,10 @@
 class MTDevice;
 class MTResource;
 
+#if defined(USE_METAL_SHADER_CONVERTER)
+struct IRDescriptorTableEntry;
+#endif
+
 class MTView : public ViewBase {
 public:
     MTView(MTDevice& device, const std::shared_ptr<MTResource>& resource, const ViewDesc& view_desc);
@@ -12,7 +16,11 @@ public:
     id<MTLTexture> GetTextureView() const;
     id<MTLResource> GetAllocation() const;
     MTLGPUAddress GetGpuAddress() const;
+#if defined(USE_METAL_SHADER_CONVERTER)
+    void BindView(IRDescriptorTableEntry* entry);
+#else
     void BindView(id<MTL4ArgumentTable> argument_table, uint32_t index);
+#endif
 
 private:
     void CreateView();

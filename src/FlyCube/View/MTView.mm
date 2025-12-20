@@ -7,6 +7,10 @@
 #include "Utilities/Logging.h"
 #include "Utilities/NotReached.h"
 
+#if defined(USE_METAL_SHADER_CONVERTER)
+#include <metal_irconverter_runtime.h>
+#endif
+
 namespace {
 
 MTLTextureType ConvertTextureType(ViewDimension dimension)
@@ -185,6 +189,37 @@ MTLGPUAddress MTView::GetGpuAddress() const
     }
 }
 
+#if defined(USE_METAL_SHADER_CONVERTER)
+void MTView::BindView(IRDescriptorTableEntry* entry)
+{
+    switch (view_desc_.view_type) {
+    case ViewType::kSampler: {
+        IRDescriptorTableSetSampler(entry, mt_resource_->GetSampler(), 0.0);
+        break;
+    }
+    case ViewType::kTexture:
+    case ViewType::kRWTexture:
+    case ViewType::kBuffer:
+    case ViewType::kRWBuffer: {
+        IRDescriptorTableSetTexture(entry, texture_view_, 0.0, 0);
+        break;
+    }
+    case ViewType::kConstantBuffer:
+    case ViewType::kStructuredBuffer:
+    case ViewType::kRWStructuredBuffer:
+    case ViewType::kByteAddressBuffer:
+    case ViewType::kRWByteAddressBuffer:
+    case ViewType::kAccelerationStructure: {
+        entry->gpuVA = GetGpuAddress();
+        entry->textureViewID = 0;
+        entry->metadata = 0;
+        break;
+    }
+    default:
+        NOTREACHED();
+    }
+}
+#else
 void MTView::BindView(id<MTL4ArgumentTable> argument_table, uint32_t index)
 {
     MTLGPUAddress gpu_address = GetGpuAddress();
@@ -212,3 +247,4 @@ void MTView::BindView(id<MTL4ArgumentTable> argument_table, uint32_t index)
         NOTREACHED();
     }
 }
+#endif
