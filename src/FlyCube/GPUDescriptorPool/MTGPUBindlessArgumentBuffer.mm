@@ -2,6 +2,13 @@
 
 #include "Device/MTDevice.h"
 
+#if defined(USE_METAL_SHADER_CONVERTER)
+#include <metal_irconverter_runtime.h>
+using EntryType = IRDescriptorTableEntry;
+#else
+using EntryType = uint64_t;
+#endif
+
 MTGPUBindlessArgumentBuffer::MTGPUBindlessArgumentBuffer(MTDevice& device)
     : device_(device)
     , residency_set_(device.CreateResidencySet())
@@ -14,10 +21,10 @@ void MTGPUBindlessArgumentBuffer::ResizeHeap(uint32_t req_size)
         return;
     }
 
-    id<MTLBuffer> buffer = [device_.GetDevice() newBufferWithLength:req_size * sizeof(uint64_t)
+    id<MTLBuffer> buffer = [device_.GetDevice() newBufferWithLength:req_size * sizeof(EntryType)
                                                             options:MTLResourceStorageModeShared];
     if (size_ && buffer_) {
-        memcpy(buffer.contents, buffer_.contents, size_ * sizeof(uint64_t));
+        memcpy(buffer.contents, buffer_.contents, size_ * sizeof(EntryType));
     }
 
     size_ = req_size;

@@ -5,6 +5,13 @@
 #include "Utilities/Check.h"
 #include "View/MTView.h"
 
+#if defined(USE_METAL_SHADER_CONVERTER)
+#include <metal_irconverter_runtime.h>
+using EntryType = IRDescriptorTableEntry;
+#else
+using EntryType = uint64_t;
+#endif
+
 MTBindlessTypedViewPool::MTBindlessTypedViewPool(MTDevice& device, ViewType view_type, uint32_t view_count)
     : view_count_(view_count)
 {
@@ -31,8 +38,12 @@ void MTBindlessTypedViewPool::WriteViewImpl(uint32_t index, View* view)
 {
     DCHECK(index < view_count_);
     auto* mt_view = CastToImpl<MTView>(view);
-    uint64_t* arguments = static_cast<uint64_t*>(range_->GetArgumentBuffer().contents);
+    EntryType* arguments = static_cast<EntryType*>(range_->GetArgumentBuffer().contents);
     const uint32_t offset = range_->GetOffset() + index;
+#if defined(USE_METAL_SHADER_CONVERTER)
+    mt_view->BindView(&arguments[offset]);
+#else
     arguments[offset] = mt_view->GetGpuAddress();
+#endif
     range_->AddAllocation(offset, mt_view->GetAllocation());
 }

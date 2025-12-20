@@ -22,16 +22,63 @@ MTBindingSet::MTBindingSet(MTDevice& device, const std::shared_ptr<MTBindingSetL
         }
     }
 
-    CreateConstantsFallbackBuffer(device_, layout->GetConstants());
-    for (const auto& [bind_key, view] : fallback_constants_buffer_views_) {
-        direct_bindings_.insert_or_assign(bind_key, view);
+#if defined(USE_METAL_SHADER_CONVERTER)
+    uint32_t spaces = 0;
+    std::map<uint32_t, uint32_t> slots;
+    for (const auto& bind_key : layout->GetBindKeys()) {
+        spaces = std::max(spaces, bind_key.space + 1);
+        if (bind_key.count != kBindlessCount) {
+            slots[bind_key.space] = std::max(slots[bind_key.space], bind_key.slot + 1);
+        }
     }
+    for (const auto& [bind_key, _] : layout->GetConstants()) {
+        DCHECK(bind_key.count == 1);
+        spaces = std::max(spaces, bind_key.space + 1);
+        slots[bind_key.space] = std::max(slots[bind_key.space], bind_key.slot + 1);
+    }
+
+    if (spaces > 0) {
+        argument_buffer_ = [device_.GetDevice() newBufferWithLength:spaces * sizeof(uint64_t)
+                                                            options:MTLResourceStorageModeShared];
+        uint64_t* argument_buffer_data = reinterpret_cast<uint64_t*>(argument_buffer_.contents);
+        for (size_t i = 0; i < spaces; ++i) {
+            if (slots[i] == 0) {
+                continue;
+            }
+            bindings_by_space_[i] = [device_.GetDevice() newBufferWithLength:slots[i] * sizeof(IRDescriptorTableEntry)
+                                                                     options:MTLResourceStorageModeShared];
+            argument_buffer_data[i] = bindings_by_space_[i].gpuAddress;
+        }
+
+        id<MTLBuffer> buffer = device_.GetBindlessArgumentBuffer().GetArgumentBuffer();
+        for (const auto& bind_key : bindless_bind_keys_) {
+            argument_buffer_data[bind_key.space] = buffer.gpuAddress;
+        }
+    }
+#endif
+
+    CreateConstantsFallbackBuffer(device_, layout->GetConstants());
+    std::vector<BindingDesc> fallback_constants_bindings;
+    fallback_constants_bindings.reserve(fallback_constants_buffer_views_.size());
+    for (const auto& [bind_key, view] : fallback_constants_buffer_views_) {
+        fallback_constants_bindings.emplace_back(bind_key, view);
+    }
+    WriteBindings({ .bindings = fallback_constants_bindings });
 }
 
 void MTBindingSet::WriteBindings(const WriteBindingsDesc& desc)
 {
+#if defined(USE_METAL_SHADER_CONVERTER)
     for (const auto& [bind_key, view] : desc.bindings) {
-        assert(bind_key.count != kBindlessCount);
+        IRDescriptorTableEntry* entries =
+            static_cast<IRDescriptorTableEntry*>(bindings_by_space_[bind_key.space].contents);
+        auto* mt_view = CastToImpl<MTView>(view);
+        mt_view->BindView(&entries[bind_key.slot]);
+    }
+#endif
+
+    for (const auto& [bind_key, view] : desc.bindings) {
+        DCHECK(bind_key.count != kBindlessCount);
         direct_bindings_.insert_or_assign(bind_key, view);
     }
     for (const auto& [bind_key, data] : desc.constants) {
@@ -45,36 +92,22 @@ void MTBindingSet::Apply(const std::map<ShaderType, id<MTL4ArgumentTable>>& argu
                          id<MTLResidencySet> residency_set)
 {
 #if defined(USE_METAL_SHADER_CONVERTER)
-    std::map<std::pair<Shader*, ShaderType>, uint64_t> argument_buffers_size;
-    for (const auto& [bind_key, view] : direct_bindings_) {
-        decltype(auto) shader = CastToImpl<MTPipeline>(pipeline)->GetShader(bind_key.shader_type);
-        uint32_t offset = CastToImpl<MTShader>(shader)->GetBindingOffset({ bind_key.slot, bind_key.space });
-        argument_buffers_size[{ shader.get(), bind_key.shader_type }] = std::max<uint64_t>(
-            argument_buffers_size[{ shader.get(), bind_key.shader_type }], offset + 3 * sizeof(uint64_t));
-    }
-    for (const auto& [shader_type, size] : argument_buffers_size) {
-        if (!argument_buffers_[shader_type]) {
-            argument_buffers_[shader_type] = [device_.GetDevice() newBufferWithLength:size
-                                                                              options:MTLResourceStorageModeShared];
-        }
-    }
     for (const auto& [bind_key, view] : direct_bindings_) {
         auto* mt_view = CastToImpl<MTView>(view);
-        DCHECK(mt_view);
-        decltype(auto) shader = CastToImpl<MTPipeline>(pipeline)->GetShader(bind_key.shader_type);
-        uint32_t offset = CastToImpl<MTShader>(shader)->GetBindingOffset({ bind_key.slot, bind_key.space });
-        auto* ptr = static_cast<uint8_t*>(argument_buffers_[{ shader.get(), bind_key.shader_type }].contents);
-        IRDescriptorTableEntry* entry = reinterpret_cast<IRDescriptorTableEntry*>(ptr + offset);
-        mt_view->BindView(entry);
         id<MTLResource> allocation = mt_view->GetAllocation();
         if (allocation) {
             [residency_set addAllocation:allocation];
         }
+
+        decltype(auto) argument_table = argument_tables.at(bind_key.shader_type);
+        [argument_table setAddress:argument_buffer_.gpuAddress atIndex:kIRArgumentBufferBindPoint];
+        [residency_set addAllocation:argument_buffer_];
+        [residency_set addAllocation:bindings_by_space_[bind_key.space]];
     }
-    for (const auto& [shader_type, size] : argument_buffers_size) {
-        decltype(auto) argument_table = argument_tables.at(shader_type.second);
-        [argument_table setAddress:argument_buffers_[shader_type].gpuAddress atIndex:kIRArgumentBufferBindPoint];
-        [residency_set addAllocation:argument_buffers_[shader_type]];
+
+    if (!bindless_bind_keys_.empty()) {
+        id<MTLBuffer> buffer = device_.GetBindlessArgumentBuffer().GetArgumentBuffer();
+        [residency_set addAllocation:buffer];
     }
 #else
     for (const auto& [bind_key, view] : direct_bindings_) {
