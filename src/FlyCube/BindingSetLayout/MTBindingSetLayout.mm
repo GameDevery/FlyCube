@@ -4,6 +4,8 @@
 #include "Utilities/Check.h"
 
 #if defined(USE_METAL_SHADER_CONVERTER)
+#include "HLSLCompiler/MetalShaderConverter.h"
+
 #include <metal_irconverter_runtime.h>
 #endif
 
@@ -18,17 +20,19 @@ MTBindingSetLayout::MTBindingSetLayout(MTDevice& device, const BindingSetLayoutD
     for (const auto& bind_key : bind_keys_) {
         spaces = std::max(spaces, bind_key.space + 1);
         if (bind_key.count != kBindlessCount) {
-            slots[bind_key.space] = std::max(slots[bind_key.space], bind_key.slot + 1);
+            auto& count = slots[GetArgumentBufferKey(bind_key.space, bind_key.view_type)];
+            count = std::max(count, bind_key.slot + 1);
         }
     }
     for (const auto& [bind_key, _] : constants_) {
         DCHECK(bind_key.count == 1);
         spaces = std::max(spaces, bind_key.space + 1);
-        slots[bind_key.space] = std::max(slots[bind_key.space], bind_key.slot + 1);
+        auto& count = slots[GetArgumentBufferKey(bind_key.space, bind_key.view_type)];
+        count = std::max(count, bind_key.slot + 1);
     }
-    argument_buffer_size_ = spaces * sizeof(uint64_t);
-    for (const auto& [space, count] : slots) {
-        argument_buffer_offsets_[space] = argument_buffer_size_;
+    argument_buffer_size_ = spaces * kDxilMaxRangeType * sizeof(uint64_t);
+    for (const auto& [argument_buffer_key, count] : slots) {
+        argument_buffer_offsets_[argument_buffer_key] = argument_buffer_size_;
         argument_buffer_size_ += count * sizeof(IRDescriptorTableEntry);
     }
 #endif

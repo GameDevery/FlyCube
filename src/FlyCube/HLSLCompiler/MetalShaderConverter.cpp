@@ -6,6 +6,8 @@
 
 #include <metal_irconverter.h>
 
+#include <span>
+
 namespace {
 
 IRShaderStage GetShaderStage(ShaderType type)
@@ -28,29 +30,6 @@ IRShaderStage GetShaderStage(ShaderType type)
     }
 }
 
-IRDescriptorRangeType GetRangeType(ViewType view_type)
-{
-    switch (view_type) {
-    case ViewType::kTexture:
-    case ViewType::kBuffer:
-    case ViewType::kStructuredBuffer:
-    case ViewType::kByteAddressBuffer:
-    case ViewType::kAccelerationStructure:
-        return IRDescriptorRangeTypeSRV;
-    case ViewType::kRWTexture:
-    case ViewType::kRWBuffer:
-    case ViewType::kRWStructuredBuffer:
-    case ViewType::kRWByteAddressBuffer:
-        return IRDescriptorRangeTypeUAV;
-    case ViewType::kConstantBuffer:
-        return IRDescriptorRangeTypeCBV;
-    case ViewType::kSampler:
-        return IRDescriptorRangeTypeSampler;
-    default:
-        NOTREACHED();
-    }
-}
-
 IRRootSignature* CreateIRRootSignature(const std::vector<BindKey>& bind_keys)
 {
     uint32_t spaces = 0;
@@ -58,10 +37,10 @@ IRRootSignature* CreateIRRootSignature(const std::vector<BindKey>& bind_keys)
         spaces = std::max(spaces, bind_key.space + 1);
     }
 
-    std::vector<std::vector<IRDescriptorRange1>> descriptor_table_ranges(spaces);
+    std::map<uint32_t, std::vector<IRDescriptorRange1>> descriptor_table_ranges;
     for (const auto& bind_key : bind_keys) {
-        auto& range = descriptor_table_ranges[bind_key.space].emplace_back();
-        range.RangeType = GetRangeType(bind_key.view_type);
+        auto& range = descriptor_table_ranges[GetArgumentBufferKey(bind_key.space, bind_key.view_type)].emplace_back();
+        range.RangeType = static_cast<IRDescriptorRangeType>(GetRangeType(bind_key.view_type));
         range.NumDescriptors = bind_key.count;
         range.BaseShaderRegister = bind_key.slot;
         range.RegisterSpace = bind_key.space;
@@ -70,10 +49,10 @@ IRRootSignature* CreateIRRootSignature(const std::vector<BindKey>& bind_keys)
     }
 
     std::vector<IRRootParameter1> root_parameters;
-    auto add_root_table = [&](size_t range_count, IRDescriptorRange1* ranges) {
+    auto add_root_table = [&](std::span<IRDescriptorRange1> ranges) {
         IRRootDescriptorTable1 descriptor_table = {};
-        descriptor_table.NumDescriptorRanges = range_count;
-        descriptor_table.pDescriptorRanges = ranges;
+        descriptor_table.NumDescriptorRanges = ranges.size();
+        descriptor_table.pDescriptorRanges = ranges.data();
 
         IRRootParameter1& root_parameter = root_parameters.emplace_back();
         root_parameter.ParameterType = IRRootParameterTypeDescriptorTable;
@@ -81,8 +60,10 @@ IRRootSignature* CreateIRRootSignature(const std::vector<BindKey>& bind_keys)
         root_parameter.ShaderVisibility = IRShaderVisibilityAll;
     };
 
-    for (auto& descriptor_table_range : descriptor_table_ranges) {
-        add_root_table(descriptor_table_range.size(), descriptor_table_range.data());
+    for (size_t i = 0; i < spaces; ++i) {
+        for (size_t j = 0; j < kDxilMaxRangeType; ++j) {
+            add_root_table(descriptor_table_ranges[i * kDxilMaxRangeType + j]);
+        }
     }
 
     IRRootSignatureFlags root_signature_flags = static_cast<IRRootSignatureFlags>(
@@ -106,6 +87,29 @@ IRRootSignature* CreateIRRootSignature(const std::vector<BindKey>& bind_keys)
 }
 
 } // namespace
+
+uint32_t GetRangeType(ViewType view_type)
+{
+    switch (view_type) {
+    case ViewType::kTexture:
+    case ViewType::kBuffer:
+    case ViewType::kStructuredBuffer:
+    case ViewType::kByteAddressBuffer:
+    case ViewType::kAccelerationStructure:
+        return IRDescriptorRangeTypeSRV;
+    case ViewType::kRWTexture:
+    case ViewType::kRWBuffer:
+    case ViewType::kRWStructuredBuffer:
+    case ViewType::kRWByteAddressBuffer:
+        return IRDescriptorRangeTypeUAV;
+    case ViewType::kConstantBuffer:
+        return IRDescriptorRangeTypeCBV;
+    case ViewType::kSampler:
+        return IRDescriptorRangeTypeSampler;
+    default:
+        NOTREACHED();
+    }
+}
 
 std::vector<uint8_t> ConvertToMetalLibBytecode(ShaderType shader_type,
                                                const std::vector<uint8_t>& blob,

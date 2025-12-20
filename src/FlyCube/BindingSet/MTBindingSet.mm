@@ -10,6 +10,8 @@
 #include "View/MTView.h"
 
 #if defined(USE_METAL_SHADER_CONVERTER)
+#include "HLSLCompiler/MetalShaderConverter.h"
+
 #include <metal_irconverter_runtime.h>
 #endif
 
@@ -28,12 +30,13 @@ MTBindingSet::MTBindingSet(MTDevice& device, const std::shared_ptr<MTBindingSetL
         argument_buffer_ = [device_.GetDevice() newBufferWithLength:layout->GetArgumentBufferSize()
                                                             options:MTLResourceStorageModeShared];
         uint64_t* argument_buffer_data = static_cast<uint64_t*>(argument_buffer_.contents);
-        for (const auto& [space, offset] : layout->GetArgumentBufferOffsets()) {
-            argument_buffer_data[space] = argument_buffer_.gpuAddress + offset;
+        for (const auto& [argument_buffer_key, offset] : layout->GetArgumentBufferOffsets()) {
+            argument_buffer_data[argument_buffer_key] = argument_buffer_.gpuAddress + offset;
         }
         id<MTLBuffer> bindless_argument_buffer = device_.GetBindlessArgumentBuffer().GetArgumentBuffer();
         for (const auto& bind_key : bindless_bind_keys_) {
-            argument_buffer_data[bind_key.space] = bindless_argument_buffer.gpuAddress;
+            const uint32_t argument_buffer_key = GetArgumentBufferKey(bind_key.space, bind_key.view_type);
+            argument_buffer_data[argument_buffer_key] = bindless_argument_buffer.gpuAddress;
         }
     }
 #endif
@@ -53,8 +56,9 @@ void MTBindingSet::WriteBindings(const WriteBindingsDesc& desc)
     uint8_t* argument_buffer_data = static_cast<uint8_t*>(argument_buffer_.contents);
     for (const auto& [bind_key, view] : desc.bindings) {
         DCHECK(view);
+        const uint32_t argument_buffer_key = GetArgumentBufferKey(bind_key.space, bind_key.view_type);
         auto* entries = reinterpret_cast<IRDescriptorTableEntry*>(
-            argument_buffer_data + layout_->GetArgumentBufferOffsets().at(bind_key.space));
+            argument_buffer_data + layout_->GetArgumentBufferOffsets().at(argument_buffer_key));
         auto* mt_view = CastToImpl<MTView>(view);
         mt_view->BindView(&entries[bind_key.slot]);
     }
